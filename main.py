@@ -3,6 +3,7 @@ import pygame
 import os
 import sys
 import queue
+from pygame import draw
 
 MAK_CONTAMINATION = 4
 IMAGE_W = 1357
@@ -20,7 +21,7 @@ def load_cities():
             name = record[1]
             cords = (int(record[2]), int(record[3]))
             virus = int(record[4]) - 1
-            cities.append((num, name, cords, virus))
+            cities.append(Town(num, name, cords, virus))
     return cities
 
 
@@ -33,6 +34,14 @@ def load_cities_graph():
             c_2 = int(record[1]) - 1
             graph.append((c_1, c_2))
     return graph
+
+
+def load_image(name, colorkey=None):
+    if not os.path.isfile(name):
+        print(f"Файл с изображением '{name}' не найден")
+        sys.exit()
+    image = pygame.image.load(name)
+    return image
 
 
 class Town:
@@ -122,3 +131,35 @@ class Game:
                     used[neig.take_num()] = True
                     if not neig.infection():
                         infected.put(neig)
+
+
+def new_cadr(screen, image, cities, graph):
+    screen.blit(image, (0, 0))
+    for city in cities:
+        x, y = city.take_cords()
+        draw.circle(screen, VIRUS_COLORS[city.take_virus()], (x, y), 15)
+        if city.is_station():
+            draw.polygon(screen, 'white', ((x, y), (x, y - 10), (x + 10, y - 18), (x + 20, y - 10), (x + 20, y)))
+
+
+def main():
+    pygame.init()
+    size = IMAGE_W, IMAGE_H
+    screen = pygame.display.set_mode(size)
+    image = load_image('2.png')
+    screen.blit(image, (0, 0))
+    pygame.display.flip()
+    cities = load_cities()
+    graph = load_cities_graph()
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        new_cadr(screen, image, cities, graph)
+        pygame.display.flip()
+    pygame.quit()
+
+
+if __name__ == '__main__':
+    main()
