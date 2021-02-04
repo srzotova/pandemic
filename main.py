@@ -8,7 +8,9 @@ from pygame import draw
 MAK_CONTAMINATION = 4
 IMAGE_W = 1357
 IMAGE_H = 628
-VIRUS_COLORS = [(10, 10, 10), (0, 0, 255), (255, 255, 0), (255, 0, 0)]
+VIRUS_COLORS = [(10, 10, 10), (0, 10, 245), (255, 255, 0), (255, 0, 0)]
+CONTAMINATION_COLOR = (0, 100, 0)
+STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 10
 
 
@@ -36,14 +38,6 @@ def load_cities_graph():
     return graph
 
 
-def load_image(name, colorkey=None):
-    if not os.path.isfile(name):
-        print(f"Файл с изображением '{name}' не найден")
-        sys.exit()
-    image = pygame.image.load(name)
-    return image
-
-
 class Town:
     def __init__(self, num, name, cords, virus):
         self.num = num
@@ -52,8 +46,8 @@ class Town:
         self.virus = virus
 
         self.players = set()
-        self.station = False
-        self.contamination = 0
+        self.station = True
+        self.contamination = 4
         self.neighbors = set()
 
     def take_num(self):
@@ -133,13 +127,16 @@ class Game:
                         infected.put(neig)
 
 
-def new_cadr(screen, image, cities, graph):
+def new_card(screen, image, cities, graph):
     screen.blit(image, (0, 0))
     for city in cities:
         x, y = city.take_cords()
         draw.circle(screen, VIRUS_COLORS[city.take_virus()], (x, y), 15)
         if city.is_station():
-            draw.polygon(screen, 'white', ((x, y), (x, y - 10), (x + 10, y - 18), (x + 20, y - 10), (x + 20, y)))
+            draw.polygon(screen, STATION_COLOR,
+                         ((x + 5, y), (x + 5, y - 7), (x + 7 + 5, y - 14), (x + 19, y - 7), (x + 19, y)))
+        for i in range(city.take_contamination()):
+            draw.circle(screen, CONTAMINATION_COLOR, (x - 10 - ((i + 1) % 2) * 9, y + (i // 2) * 9 + 2), 4)
 
 
 def main():
@@ -156,7 +153,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        new_cadr(screen, image, cities, graph)
+        new_card(screen, image, cities, graph)
         pygame.display.flip()
     pygame.quit()
 
