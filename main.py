@@ -14,6 +14,8 @@ MAX_OUTBREAKS_COUNT = 8
 INFECTIVITY = [2, 2, 2, 3, 3, 4, 4]
 VIRUS_COUNT = 4
 VIRUS_UNITS_COUNT = 24
+START_GROUPS_SIZE = 3
+MAX_CARDS_IN_HAND = 7
 # параметры победителя
 GAME_WIN = False
 PLAYERS_WIN = True
@@ -22,6 +24,13 @@ IMAGE_W = 1357
 IMAGE_H = 628
 VIRUS_COLORS = [(10, 10, 10), (0, 0, 255), (255, 255, 0), (255, 0, 0)]
 CITY_RADIUS = 10
+# игровые роли
+ROLE_DISPATCHER = 1
+ROLE_DOCTOR = 2
+ROLE_SCIENTIST = 3
+ROLE_RESEARCHER = 4
+ROLE_ENGINEER = 5
+ROLE_QUARANTINE_SPECIALIST = 6
 
 
 def load_cities():
@@ -160,7 +169,8 @@ class Game:
         shuffle(cards)
         self.players_pack = iter(cards)
         cards = cities_names * (MAK_CONTAMINATION + 1)
-        shuffle(cards)
+        while len(set(cards[:3 * START_GROUPS_SIZE])) != 3 * START_GROUPS_SIZE:
+            shuffle(cards)
         self.infection_pack = iter(cards)
 
         self.scale_outbreaks = 0
@@ -169,6 +179,12 @@ class Game:
         self.viruses_units = [VIRUS_UNITS_COUNT] * VIRUS_COUNT
         self.game_over = False
         self.winner = None
+
+        for units_count in range(1, 4):
+            for i in range(START_GROUPS_SIZE):
+                card = self.open_infections_card()
+                for _ in range(units_count):
+                    self.infection(self.cities[card])
 
     def get_element(self, x, y):
         for city in self.cities.values():
@@ -227,6 +243,8 @@ class Game:
 
     def receiving_cards(self, player):
         for _ in range(HOW_TAKE):
+            if len(player.take_hand()) == MAX_CARDS_IN_HAND:
+                break
             card = self.open_players_card()
             if card is None:
                 self.game_over = True
@@ -239,6 +257,8 @@ class Game:
     def transfer_card(self, player_from, player_to, card):
         if player_from.del_card(card):
             player_to.add_card(card)
+            return True
+        return False
 
     def create_vaccine(self, player, virus, cards):
         correct = True
@@ -256,6 +276,42 @@ class Game:
             return True
         for card in deleted:
             player.add_card(card)
+        return False
+
+    def simple_moving(self, player, city):
+        if city in player.location().take_neighbors():
+            self.move_player(player, city)
+            return True
+        return False
+
+    def air_moving(self, player, city, card):
+        if player.location().take_name() == card:
+            self.move_player(player, city)
+            player.del_card(card)
+        elif city.take_name() == card:
+            self.move_player(player, city)
+            player.del_card(card)
+        else:
+            return False
+        return True
+
+    def work_moving(self, player, city):
+        if player.location().is_station() and city.is_station():
+            self.move_player(player, city)
+            return True
+        return False
+
+    def build_station(self, player, card):
+        if player.location().take_name() == card and not player.location().is_station():
+            player.location().build_station()
+            player.del_card(card)
+            return True
+        return False
+
+    def fighting_virus(self, player):
+        if player.location().take_contamination() > 0:
+            player.location().medication()
+            return True
         return False
 
     def is_game_over(self):
