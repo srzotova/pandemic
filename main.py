@@ -7,9 +7,16 @@ from random import shuffle
 
 # параметры игровых механик
 MAK_CONTAMINATION = 4
-INFECTION_CARD_NAME = 'Заражение'
+INFECTION_CARD_NAME = 'Усиление зарожаемости'
 INFECTION_CARDS_COUNT = 6
 HOW_TAKE = 2
+MAX_OUTBREAKS_COUNT = 8
+INFECTIVITY = [2, 2, 2, 3, 3, 4, 4]
+VIRUS_COUNT = 4
+VIRUS_UNITS_COUNT = 24
+# параметры победителя
+GAME_WIN = False
+PLAYERS_WIN = True
 # параметры рисовки
 IMAGE_W = 1357
 IMAGE_H = 628
@@ -156,6 +163,13 @@ class Game:
         shuffle(cards)
         self.infection_pack = iter(cards)
 
+        self.scale_outbreaks = 0
+        self.scale_infectivity = 0
+        self.vaccines = [False] * VIRUS_COUNT
+        self.viruses_units = [VIRUS_UNITS_COUNT] * VIRUS_COUNT
+        self.game_over = False
+        self.winner = None
+
     def get_element(self, x, y):
         for city in self.cities.values():
             cords = city.take_cords()
@@ -163,7 +177,25 @@ class Game:
             if dist <= CITY_RADIUS:
                 return city
 
+    def infection(self, city):
+        if self.viruses_units[city.take_virus()] == 0:
+            return True
+        if city.infection():
+            self.viruses_units[city.take_virus()] -= 1
+            if self.viruses_units[city.take_virus()] == 0:
+                self.game_over = True
+                self.winner = GAME_WIN
+            return True
+        return False
+
+    def medication(self, city):
+        if city.medication():
+            self.viruses_units[city.take_virus()] += 1
+            return True
+        return False
+
     def outbreak(self, start_city):
+        self.scale_outbreaks += 1
         infected = queue.Queue()
         infected.put(start_city)
         used = [False] * len(self.cities.values())
@@ -173,8 +205,12 @@ class Game:
             for neig in city.take_neighbors():
                 if not used[neig.take_num()]:
                     used[neig.take_num()] = True
-                    if not neig.infection():
+                    if not self.infection(neig):
+                        self.scale_outbreaks += 1
                         infected.put(neig)
+        if self.scale_outbreaks >= MAX_OUTBREAKS_COUNT:
+            self.game_over = True
+            self.winner = GAME_WIN
 
     def move_player(self, player, city):
         player.take_location().del_player(player)
@@ -182,15 +218,48 @@ class Game:
         player.set_location(city)
 
     def open_players_card(self):
-        return next(self.players_pack)
+        if self.players_pack:
+            return next(self.players_pack)
+        return None
 
     def open_infections_card(self):
         return next(self.infection_pack)
 
     def receiving_cards(self, player):
         for _ in range(HOW_TAKE):
-            player.add_card(self.open_players_card())
+            card = self.open_players_card()
+            if card is None:
+                self.game_over = True
+                self.winner = GAME_WIN
+            if card == INFECTION_CARD_NAME:
+                self.scale_infectivity += 1
+            else:
+                player.add_card(card)
 
     def transfer_card(self, player_from, player_to, card):
         if player_from.del_card(card):
             player_to.add_card(card)
+
+    def create_vaccine(self, player, virus, cards):
+        correct = True
+        deleted = []
+        for card in cards:
+            if player.del_card(card):
+                deleted.append(card)
+            else:
+                correct = False
+        if correct:
+            self.vaccines[virus] = True
+            if all(self.vaccines):
+                self.game_over = True
+                self.winner = PLAYERS_WIN
+            return True
+        for card in deleted:
+            player.add_card(card)
+        return False
+
+    def is_game_over(self):
+        return self.game_over
+
+    def hwo_win(self):
+        return self.winner
