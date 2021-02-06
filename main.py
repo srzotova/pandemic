@@ -16,6 +16,7 @@ VIRUS_COUNT = 4
 VIRUS_UNITS_COUNT = 24
 START_GROUPS_SIZE = 3
 MAX_CARDS_IN_HAND = 7
+PLAYER_ACTIONS = 4
 # параметры победителя
 GAME_WIN = False
 PLAYERS_WIN = True
@@ -186,6 +187,9 @@ class Game:
                 for _ in range(units_count):
                     self.infection(self.cities[card])
 
+        self.remaining_actions = PLAYER_ACTIONS
+        self.current_player = self.players[0]
+
     def get_element(self, x, y):
         for city in self.cities.values():
             cords = city.take_cords()
@@ -313,6 +317,39 @@ class Game:
             player.location().medication()
             return True
         return False
+
+    def action_with_city(self, player, city, card=None):
+        if player.location() == city:
+            return self.fighting_virus(player)
+        if self.simple_moving(player, city):
+            return True
+        if self.work_moving(player, city):
+            return True
+        if card is not None:
+            return self.air_moving(player, city, card)
+        return False
+
+    def how_actions(self):
+        return self.remaining_actions
+
+    def take_current_player(self):
+        return self.current_player
+
+    def spending_action(self):
+        self.remaining_actions -= 1
+
+    def transfer_motion(self):
+        self.remaining_actions = PLAYER_ACTIONS
+        self.current_player = self.players[(self.current_player.take_num() + 1)
+                                           % len(self.players)]
+
+    def take_infectivity(self):
+        return INFECTIVITY[self.scale_infectivity]
+
+    def city_infection(self, card):
+        city = self.cities[card]
+        if not self.infection(city):
+            self.outbreak(city)
 
     def is_game_over(self):
         return self.game_over
