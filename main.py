@@ -160,10 +160,12 @@ class Game:
         for city in cities_list:
             num, name, cords, virus = city
             self.cities[name] = Town(num, name, cords, virus)
+        self.cities_graph = []
         for c_1, c_2 in load_cities_graph():
             name_1, name_2 = cities_list[c_1][1], cities_list[c_2][1]
             self.cities[name_1].add_neighbor(self.cities[name_2])
             self.cities[name_2].add_neighbor(self.cities[name_1])
+            self.cities_graph.append((self.cities[name_1], self.cities[name_2]))
 
         cities_names = [city[1] for city in cities_list]
         cards = cities_names + [INFECTION_CARD_NAME] * INFECTION_CARDS_COUNT
@@ -189,6 +191,12 @@ class Game:
 
         self.remaining_actions = PLAYER_ACTIONS
         self.current_player = self.players[0]
+
+    def take_cities_list(self):
+        return self.cities.values()
+
+    def take_cities_graph(self):
+        return self.cities_graph
 
     def get_element(self, x, y):
         for city in self.cities.values():
