@@ -457,7 +457,7 @@ def new_map(screen, image, game):
 def new_cadr(screen, image, game):
     new_map(screen, image, game)
     show_infectivity(screen, game)
-    show_player(screen, (10, 600), Player(1, 1, (225, 213)))
+    # show_player(screen, (10, 600), Player(1, 1, (225, 213)))
 
 
 def main():
