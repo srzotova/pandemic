@@ -17,7 +17,7 @@ IMAGE_H = 628
 VIRUS_COLORS = [(10, 10, 10), (0, 0, 255), (255, 255, 0), (255, 0, 0)]
 VIRUS_COLORS = [(10, 10, 10), (0, 10, 245), (255, 255, 0), (255, 0, 0)]
 CONTAMINATION_COLOR = (0, 100, 0)
-TEXT_COLOR = (80, 80, 80)
+TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 8
 
@@ -63,7 +63,7 @@ class Town:
         self.virus = virus
 
         self.players = set()
-        self.station = True
+        self.station = False
         self.contamination = 0
         self.neighbors = set()
 
@@ -247,8 +247,10 @@ def new_map(screen, image, cities, graph):
         font = pygame.font.Font(None, 18)
         text = font.render(city.take_name(), True, TEXT_COLOR)
         if city.take_name() == 'Нью-Дели' or city.take_name() == 'Лос-Анджелес':
+            draw.rect(screen, 'white', ((x - 15, y - 25), (text.get_width(), text.get_height())))
             screen.blit(text, (x-15, y-25))
         else:
+            draw.rect(screen, 'white', ((x - 5, y +7), (text.get_width(), text.get_height())))
             screen.blit(text, (x - 5, y + 7))
 
 
