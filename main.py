@@ -184,6 +184,7 @@ class Game:
         shuffle(cards)
         self.players_pack = iter(cards)
         cards = cities_names * (MAK_CONTAMINATION + 1)
+        shuffle(cards)
         while len(set(cards[:3 * START_GROUPS_SIZE])) != 3 * START_GROUPS_SIZE:
             shuffle(cards)
         self.infection_pack = iter(cards)
@@ -229,7 +230,7 @@ class Game:
         return False
 
     def medication(self, player, city):
-        if player.take_role() == ROLE_DOCTOR:
+        if player.take_role() == ROLE_DOCTOR or self.vaccines[city.take_virus]:
             if city.take_contamination() > 0:
                 self.viruses_units[city.take_virus()] += city.take_contamination()
                 city.nullify_contamination()
@@ -262,6 +263,8 @@ class Game:
         player.take_location().del_player(player)
         city.add_player(player)
         player.set_location(city)
+        if player.take_role == ROLE_DOCTOR and self.vaccines[city.take_virus()]:
+            self.medication(player, city)
 
     def open_players_card(self):
         if self.players_pack:
@@ -306,6 +309,9 @@ class Game:
             for card in cards:
                 player.del_card(card)
             self.vaccines[virus] = True
+            doctor = self.find_role(ROLE_DOCTOR)
+            if doctor is not None:
+                self.medication(doctor, doctor.take_location())
             return True
         return False
 
@@ -361,6 +367,22 @@ class Game:
             return self.air_moving(player, city, card)
         return False
 
+    def dispatcher_action(self, player, city, card=None):
+        if self.current_player.take_role() != ROLE_DISPATCHER:
+            return False
+        if player.take_location() == city:
+            return False
+        if city.take_players():
+            self.move_player(player, city)
+            return True
+        if self.work_moving(player, city):
+            return True
+        if player.take_location() == card or city == card:
+            self.move_player(player, city)
+            self.current_player.del_card(card)
+            return True
+        return False
+
     def how_actions(self):
         return self.remaining_actions
 
@@ -382,6 +404,21 @@ class Game:
         city = self.cities[card]
         if not self.infection(city):
             self.outbreak(city)
+
+    def find_role(self, role):
+        for player in self.players:
+            if player.take_role() == role:
+                return player
+        return None
+
+    def take_players(self):
+        return self.players
+
+    def take_virus_units(self, virus):
+        return self.viruses_units[virus]
+
+    def take_scale_outbreaks(self):
+        return self.scale_outbreaks
 
     def is_game_over(self):
         return self.game_over
