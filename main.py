@@ -4,6 +4,7 @@ import os
 import sys
 import queue
 from random import shuffle
+from pygame import draw
 
 # параметры игровых механик
 MAK_CONTAMINATION = 4
@@ -14,7 +15,12 @@ HOW_TAKE = 2
 IMAGE_W = 1357
 IMAGE_H = 628
 VIRUS_COLORS = [(10, 10, 10), (0, 0, 255), (255, 255, 0), (255, 0, 0)]
-CITY_RADIUS = 10
+VIRUS_COLORS = [(10, 10, 10), (0, 10, 245), (255, 255, 0), (255, 0, 0)]
+CONTAMINATION_COLOR = (0, 100, 0)
+TEXT_COLOR = (80, 80, 80)
+STATION_COLOR = (225, 255, 255)
+CITY_RADIUS = 8
+
 
 
 def load_cities():
@@ -26,7 +32,7 @@ def load_cities():
             name = record[1]
             cords = (int(record[2]), int(record[3]))
             virus = int(record[4]) - 1
-            cities.append((num, name, cords, virus))
+            cities.append(Town(num, name, cords, virus))
     return cities
 
 
@@ -41,6 +47,14 @@ def load_cities_graph():
     return graph
 
 
+def load_image(name, colorkey=None):
+    if not os.path.isfile(name):
+        print(f"Файл с изображением '{name}' не найден")
+        sys.exit()
+    image = pygame.image.load(name)
+    return image
+
+
 class Town:
     def __init__(self, num, name, cords, virus):
         self.num = num
@@ -49,7 +63,7 @@ class Town:
         self.virus = virus
 
         self.players = set()
-        self.station = False
+        self.station = True
         self.contamination = 0
         self.neighbors = set()
 
@@ -194,3 +208,75 @@ class Game:
     def transfer_card(self, player_from, player_to, card):
         if player_from.del_card(card):
             player_to.add_card(card)
+
+
+def new_map(screen, image, cities, graph):
+    screen.blit(image, (0, 0))
+    exceptions = [graph[-1], graph[-2], graph[-3]]
+    # Отрисовка ребер между городами
+    for city in cities:
+        for neighbor in city.take_neighbors():
+            for c in cities:
+                if c.take_num() == neighbor:
+                    # Если ребро должно выходить за пределы карты и входить с другой стороны
+                    if (city.take_num(), neighbor) in exceptions:
+                        x1, y1 = city.take_cords()
+                        x2, y2 = c.take_cords()
+                        if x1 > x2:
+                            x1, y1 = x2, y2
+                        draw.line(screen, (220, 220, 220), (x1, y1), (0, (y1+y2)//2), width=3)
+                        draw.line(screen, (220, 220, 220), (x2, y2), (IMAGE_W, (y1 + y2) // 2), width=3)
+                        font = pygame.font.Font(None, 20)
+                        text = font.render(c.take_name(), True, TEXT_COLOR)
+                        screen.blit(text, (0, (y1+y2)//2))
+                        font = pygame.font.Font(None, 20)
+                        text = font.render(city.take_name(), True, TEXT_COLOR)
+                        screen.blit(text, (IMAGE_W-105, (y1 + y2) // 2))
+                    elif (neighbor, city.take_num()) not in exceptions:
+                        draw.line(screen, (220, 220, 220), city.take_cords(), c.take_cords(), width=3)
+    for city in cities:
+        x, y = city.take_cords()
+        draw.circle(screen, VIRUS_COLORS[city.take_virus()], (x, y), 15)
+        if city.is_station():
+            draw.polygon(screen, STATION_COLOR,
+                         ((x + 5, y), (x + 5, y - 7), (x + 7 + 5, y - 14), (x + 19, y - 7), (x + 19, y)))
+        draw.circle(screen, CONTAMINATION_COLOR, (x - 10 - 5, y + 8), 7)
+        font = pygame.font.Font(None, 20)
+        text = font.render(str(city.take_contamination()), True, (100, 255, 100))
+        screen.blit(text, (x - 10 - 9, y + 2))
+        font = pygame.font.Font(None, 18)
+        text = font.render(city.take_name(), True, TEXT_COLOR)
+        if city.take_name() == 'Нью-Дели' or city.take_name() == 'Лос-Анджелес':
+            screen.blit(text, (x-15, y-25))
+        else:
+            screen.blit(text, (x - 5, y + 7))
+
+
+def main():
+    pygame.init()
+    size = IMAGE_W, IMAGE_H
+    screen = pygame.display.set_mode(size)
+    image = load_image('map.png')
+    screen.blit(image, (0, 0))
+    pygame.display.flip()
+    cities = load_cities()
+    graph = load_cities_graph()
+    for c1, c2 in graph:
+        for city in cities:
+            if city.take_num() == c1:
+                city.add_neighbor(c2)
+            if city.take_num() == c2:
+                city.add_neighbor(c1)
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        new_map(screen, image, cities, graph)
+        pygame.display.flip()
+    pygame.quit()
+
+
+if __name__ == '__main__':
+    main()
