@@ -201,22 +201,32 @@ class Game:
             self.cities_graph.append((self.cities[name_1], self.cities[name_2]))
 
         cities_names = [city[1] for city in cities_list]
-        cards = cities_names
+        cards = cities_names.copy()
         shuffle(cards)
+        start_cards = cards[:(START_PLAYERS_CARDS - len(self.players)) * len(players)]
+        cards = cards[(START_PLAYERS_CARDS - len(self.players)) * len(players):]
+        stack_len = len(cards) // INFECTION_CARDS_COUNT
+        stacks = []
+        for _ in range(INFECTION_CARDS_COUNT):
+            stacks.append(cards[:stack_len])
+            cards = cards[stack_len:]
+        stacks[-1] += cards
+        cards = start_cards
+        for stack in stacks:
+            stack.append(INFECTION_CARD_NAME)
+            shuffle(stack)
+            cards += stack
         self.players_pack = iter(cards.copy())
-        for player in self.players:
-            for _ in range(START_PLAYERS_CARDS - len(self.players)):
-                player.add_card(self.open_players_card())
-        cards = cities_names + [INFECTION_CARD_NAME] * INFECTION_CARDS_COUNT
-        shuffle(cards)
-        self.players_pack = iter(cards.copy())
-
         cards = cities_names * (MAK_CONTAMINATION + 1)
         shuffle(cards)
         while len(set(cards[:3 * START_GROUPS_SIZE])) != 3 * START_GROUPS_SIZE:
             shuffle(cards)
         self.infection_pack = iter(cards.copy())
         self.complete_pack = cards
+
+        for player in self.players:
+            for _ in range(START_PLAYERS_CARDS - len(self.players)):
+                player.add_card(self.open_players_card())
 
         self.scale_outbreaks = 0
         self.scale_infectivity = 0
@@ -644,7 +654,7 @@ def main():
     screen.fill(BACKGROUND_COLOR)
     screen.blit(image, (0, 0))
     pygame.display.flip()
-    game = Game([1])
+    game = Game([1, 2, 3, 4])
     running = True
     while running:
         for event in pygame.event.get():
