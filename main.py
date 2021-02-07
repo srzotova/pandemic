@@ -181,12 +181,14 @@ class Player:
 
 class Game:
     def __init__(self, players):
-        self.players = players
+        self.players = []
         self.cities = dict()
         cities_list = load_cities()
         for city in cities_list:
             num, name, cords, virus = city
             self.cities[name] = Town(num, name, cords, virus)
+        for i in range(len(players)):
+            self.players.append(Player(i+1, players[i], self.cities['Атланта'].take_cords()))
         self.cities_graph = []
         for c_1, c_2 in load_cities_graph():
             name_1, name_2 = cities_list[c_1][1], cities_list[c_2][1]
@@ -195,19 +197,22 @@ class Game:
             self.cities_graph.append((self.cities[name_1], self.cities[name_2]))
 
         cities_names = [city[1] for city in cities_list]
+        cards = cities_names
+        shuffle(cards)
+        self.players_pack = iter(cards.copy())
+        for player in self.players:
+            for _ in range(START_PLAYERS_CARDS - len(self.players)):
+                player.add_card(self.open_players_card())
         cards = cities_names + [INFECTION_CARD_NAME] * INFECTION_CARDS_COUNT
         shuffle(cards)
         self.players_pack = iter(cards.copy())
+
         cards = cities_names * (MAK_CONTAMINATION + 1)
         shuffle(cards)
         while len(set(cards[:3 * START_GROUPS_SIZE])) != 3 * START_GROUPS_SIZE:
             shuffle(cards)
         self.infection_pack = iter(cards.copy())
         self.complete_pack = cards
-
-        for player in self.players:
-            for _ in range(START_PLAYERS_CARDS - len(self.players)):
-                player.add_card(self.open_players_card())
 
         self.scale_outbreaks = 0
         self.scale_infectivity = 0
@@ -246,9 +251,10 @@ class Game:
         if self.viruses_units[city.take_virus()] == 0:
             return True
         quarantine_specialist = self.find_role(ROLE_QUARANTINE_SPECIALIST)
-        if city == quarantine_specialist.take_location() or \
-                city in quarantine_specialist.take_location().take_neighbors:
-            return True
+        if quarantine_specialist:
+            if city == quarantine_specialist.take_location() or \
+                    city in quarantine_specialist.take_neighbors():
+                return True
         if city.infection():
             self.viruses_units[city.take_virus()] -= 1
             if self.viruses_units[city.take_virus()] == 0:
@@ -400,7 +406,7 @@ class Game:
         return False
 
     def action_with_city(self, player, city, card=None):
-        if player.location() == city:
+        if player.location() == city.take_cords():
             return self.fighting_virus(player)
         if self.simple_moving(player, city):
             return True
@@ -426,7 +432,7 @@ class Game:
             return True
         return False
 
-    def how_actions(self):
+    def how_many_actions(self):
         return self.remaining_actions
 
     def take_current_player(self):
@@ -484,23 +490,60 @@ def show_infectivity(screen, game):
     screen.blit(text, (x-27, y+8))
 
 
+def show_scale_outbreaks(screen, game):
+    x, y = 125, 50
+    draw.circle(screen, 'white', (x, y), 33)
+    font = pygame.font.Font(None, 40)
+    text = font.render(str(game.take_scale_outbreaks()), True, TEXT_COLOR)
+    screen.blit(text, (x-6, y-24))
+    font = pygame.font.Font(None, 15)
+    text = font.render('Количество', True, TEXT_COLOR)
+    screen.blit(text, (x-30, y))
+    font = pygame.font.Font(None, 15)
+    text = font.render('вспышек', True, TEXT_COLOR)
+    screen.blit(text, (x-25, y+8))
+
+
 def show_player(screen, coord, player):
     x, y = coord
     font = pygame.font.Font(None, 25)
-    text = font.render(str(ROLES[player.take_role()+1]), True, TEXT_COLOR)
-    draw.rect(screen, 'white', ((x, y), (500, 50)))
-    draw.rect(screen, 'green', ((x, y-10), (text.get_width()+2, text.get_height()+2)))
+    text = font.render(str(ROLES[player.take_role()-1]), True, TEXT_COLOR)
+    draw.rect(screen, 'white', ((x, y), (250, 75)))
+    draw.rect(screen, (220, 220, 220), ((x, y-10), (text.get_width()+2, text.get_height()+2)))
     screen.blit(text, (x+1, y-9))
-    dx = 5
-    for city in player.take_hand():
-        font = pygame.font.Font(None, 15)
+    dy = 15
+    cities = player.take_hand()
+    indent = 0
+    for i in range(min(3, len(cities))):
+        city = cities[i]
+        font = pygame.font.Font(None, 20)
         text = font.render(str(city), True, TEXT_COLOR)
-        draw.rect(screen, 'blue', ((x, y - 10), (text.get_width() + 2, text.get_height() + 2)))
-        screen.blit(text, (x + dx, y))
-        dx += text.get_height() + 2
+        draw.rect(screen, (220, 220, 220), ((x+10, y+dy), (text.get_width() + 2, text.get_height() + 2)))
+        screen.blit(text, (x + 10, y+dy))
+        dy += 15
+        if text.get_width() + 2 > indent:
+            indent = text.get_width() + 2
+    x += 125
+    dy = 10
+    for i in range(3, len(cities)):
+        city = cities[i]
+        font = pygame.font.Font(None, 20)
+        text = font.render(str(city), True, TEXT_COLOR)
+        draw.rect(screen, (220, 220, 220), ((x, y+dy), (text.get_width() + 2, text.get_height() + 2)))
+        screen.blit(text, (x, y+dy))
+        dy += 15
 
 
 #def show_palyers_pack(screen, game):
+
+def show_current_player(screen, game):
+    x, y = 1000, 10
+    font = pygame.font.Font(None, 30)
+    text = font.render('Ходит: ' + ROLES[game.take_current_player().take_role()-1], True, TEXT_COLOR)
+    screen.blit(text, (x, y))
+    font = pygame.font.Font(None, 30)
+    text = font.render('Осталось ходов: ' + str(game.how_many_actions()), True, TEXT_COLOR)
+    screen.blit(text, (x, y+20))
 
 
 def new_map(screen, image, game):
@@ -550,7 +593,12 @@ def new_map(screen, image, game):
 def new_cadr(screen, image, game):
     new_map(screen, image, game)
     show_infectivity(screen, game)
-    show_player(screen, (10, 600), Player(1, 1, (225, 213)))
+    x = 20
+    for player in game.take_players():
+        show_player(screen, (x, 600), player)
+        x += 270
+    show_scale_outbreaks(screen, game)
+    show_current_player(screen, game)
 
 
 def show_game_over(screen, game):
@@ -562,6 +610,7 @@ def show_game_over(screen, game):
         text = font.render('Вы проиграли...', True, TEXT_COLOR)
     screen.blit(text, (100, 100))
 
+
 def main():
     pygame.init()
     size = IMAGE_W, IMAGE_H+100
@@ -570,7 +619,7 @@ def main():
     screen.fill(BACKGROUND_COLOR)
     screen.blit(image, (0, 0))
     pygame.display.flip()
-    game = Game([1, 2, 3, 4])
+    game = Game([1, 3, 2, 4])
     running = True
     while running:
         for event in pygame.event.get():
@@ -578,7 +627,7 @@ def main():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 city = game.get_element(event.pos)
-                game.action_with_city()
+                game.action_with_city(game.take_current_player(), city)
         show_game_over(screen, game)
         new_cadr(screen, image, game)
         pygame.display.flip()
