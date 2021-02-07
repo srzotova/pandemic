@@ -30,8 +30,7 @@ CONTAMINATION_COLOR = (0, 100, 0)
 TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 8
-
-CITY_RADIUS = 10
+BACKGROUND_COLOR = (112, 146, 190)
 # игровые роли
 ROLE_DISPATCHER = 1
 ROLE_DOCTOR = 2
@@ -39,7 +38,7 @@ ROLE_SCIENTIST = 3
 ROLE_RESEARCHER = 4
 ROLE_ENGINEER = 5
 ROLE_QUARANTINE_SPECIALIST = 6
-
+ROLES = ['Диспетчер', 'Доктор', 'Ученый', 'Исследователь', 'Инженер', 'Специалист по карантину']
 
 def load_cities():
     cities = []
@@ -50,7 +49,7 @@ def load_cities():
             name = record[1]
             cords = (int(record[2]), int(record[3]))
             virus = int(record[4]) - 1
-            cities.append(Town(num, name, cords, virus))
+            cities.append((num, name, cords, virus))
     return cities
 
 
@@ -381,30 +380,60 @@ class Game:
         return self.winner
 
 
-def new_map(screen, image, cities, graph):
+def show_infectivity(screen, game):
+    x, y = 50, 50
+    draw.circle(screen, 'white', (x, y), 33)
+    font = pygame.font.Font(None, 40)
+    text = font.render(str(game.take_infectivity()), True, TEXT_COLOR)
+    screen.blit(text, (x-6, y-24))
+    font = pygame.font.Font(None, 15)
+    text = font.render('Скорость', True, TEXT_COLOR)
+    screen.blit(text, (x-24, y))
+    font = pygame.font.Font(None, 15)
+    text = font.render('заражения', True, TEXT_COLOR)
+    screen.blit(text, (x-27, y+8))
+
+
+def show_player(screen, coord, player):
+    x, y = coord
+    font = pygame.font.Font(None, 25)
+    text = font.render(str(ROLES[player.take_role()+1]), True, TEXT_COLOR)
+    draw.rect(screen, 'white', ((x, y), (500, 50)))
+    draw.rect(screen, 'green', ((x, y-10), (text.get_width()+2, text.get_height()+2)))
+    screen.blit(text, (x+1, y-9))
+    dx = 5
+    for city in player.take_hand():
+        font = pygame.font.Font(None, 15)
+        text = font.render(str(city), True, TEXT_COLOR)
+        draw.rect(screen, 'blue', ((x, y - 10), (text.get_width() + 2, text.get_height() + 2)))
+        screen.blit(text, (x + dx, y))
+        dx += text.get_height() + 2
+
+
+def new_map(screen, image, game):
+    cities = game.take_cities_list()
+    graph = game.take_cities_graph()
     screen.blit(image, (0, 0))
-    exceptions = [graph[-1], graph[-2], graph[-3]]
+    exceptions = [(16, 38), (16, 45), (24, 47)]
     # Отрисовка ребер между городами
     for city in cities:
         for neighbor in city.take_neighbors():
-            for c in cities:
-                if c.take_num() == neighbor:
-                    # Если ребро должно выходить за пределы карты и входить с другой стороны
-                    if (city.take_num(), neighbor) in exceptions:
-                        x1, y1 = city.take_cords()
-                        x2, y2 = c.take_cords()
-                        if x1 > x2:
-                            x1, y1 = x2, y2
-                        draw.line(screen, (220, 220, 220), (x1, y1), (0, (y1+y2)//2), width=3)
-                        draw.line(screen, (220, 220, 220), (x2, y2), (IMAGE_W, (y1 + y2) // 2), width=3)
-                        font = pygame.font.Font(None, 20)
-                        text = font.render(c.take_name(), True, TEXT_COLOR)
-                        screen.blit(text, (0, (y1+y2)//2))
-                        font = pygame.font.Font(None, 20)
-                        text = font.render(city.take_name(), True, TEXT_COLOR)
-                        screen.blit(text, (IMAGE_W-105, (y1 + y2) // 2))
-                    elif (neighbor, city.take_num()) not in exceptions:
-                        draw.line(screen, (220, 220, 220), city.take_cords(), c.take_cords(), width=3)
+            # Если ребро должно выходить за пределы карты и входить с другой стороны
+            if (city.take_num(), neighbor.take_num()) in exceptions:
+                x1, y1 = city.take_cords()
+                x2, y2 = neighbor.take_cords()
+                if x1 > x2:
+                    x1, y1 = x2, y2
+                draw.line(screen, (220, 220, 220), (x1, y1), (0, (y1+y2)//2), width=3)
+                draw.line(screen, (220, 220, 220), (x2, y2), (IMAGE_W, (y1 + y2) // 2), width=3)
+                font = pygame.font.Font(None, 20)
+                text = font.render(neighbor.take_name(), True, TEXT_COLOR)
+                screen.blit(text, (0, (y1+y2)//2))
+                font = pygame.font.Font(None, 20)
+                text = font.render(city.take_name(), True, TEXT_COLOR)
+                screen.blit(text, (IMAGE_W-105, (y1 + y2) // 2))
+            elif (int(neighbor.take_num()), int(city.take_num())) not in exceptions:
+                draw.line(screen, (220, 220, 220), city.take_cords(), neighbor.take_cords(), width=3)
     for city in cities:
         x, y = city.take_cords()
         draw.circle(screen, VIRUS_COLORS[city.take_virus()], (x, y), 15)
@@ -425,28 +454,27 @@ def new_map(screen, image, cities, graph):
             screen.blit(text, (x - 5, y + 7))
 
 
+def new_cadr(screen, image, game):
+    new_map(screen, image, game)
+    show_infectivity(screen, game)
+    show_player(screen, (10, 600), Player(1, 1, (225, 213)))
+
+
 def main():
     pygame.init()
-    size = IMAGE_W, IMAGE_H
+    size = IMAGE_W, IMAGE_H+100
     screen = pygame.display.set_mode(size)
     image = load_image('map.png')
+    screen.fill(BACKGROUND_COLOR)
     screen.blit(image, (0, 0))
     pygame.display.flip()
-    cities = load_cities()
-    graph = load_cities_graph()
-    for c1, c2 in graph:
-        for city in cities:
-            if city.take_num() == c1:
-                city.add_neighbor(c2)
-            if city.take_num() == c2:
-                city.add_neighbor(c1)
-
+    game = Game([1, 2, 3, 4])
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        new_map(screen, image, cities, graph)
+        new_cadr(screen, image, game)
         pygame.display.flip()
     pygame.quit()
 
