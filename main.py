@@ -536,8 +536,8 @@ def show_player(screen, coord, player):
 
 #def show_palyers_pack(screen, game):
 
-def show_current_player(screen, game):
-    x, y = 1000, 10
+def show_current_information(screen, game):
+    x, y = 1100, 600
     font = pygame.font.Font(None, 30)
     text = font.render('Ходит: ' + ROLES[game.take_current_player().take_role()-1], True, TEXT_COLOR)
     screen.blit(text, (x, y))
@@ -582,7 +582,7 @@ def new_map(screen, image, game):
         screen.blit(text, (x - 10 - 9, y + 2))
         font = pygame.font.Font(None, 18)
         text = font.render(city.take_name(), True, TEXT_COLOR)
-        if city.take_name() == 'Нью-Дели' or city.take_name() == 'Лос-Анджелес':
+        if city.take_name() == 'Нью-Дели' or city.take_name() == 'Лос-Анджелес' or city.take_name() == 'Монреаль':
             draw.rect(screen, 'white', ((x - 15, y - 25), (text.get_width(), text.get_height())))
             screen.blit(text, (x-15, y-25))
         else:
@@ -598,7 +598,7 @@ def new_cadr(screen, image, game):
         show_player(screen, (x, 600), player)
         x += 270
     show_scale_outbreaks(screen, game)
-    show_current_player(screen, game)
+    show_current_information(screen, game)
 
 
 def show_game_over(screen, game):
