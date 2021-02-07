@@ -199,6 +199,7 @@ class Game:
         self.scale_infectivity = 0
         self.vaccines = [False] * VIRUS_COUNT
         self.viruses_units = [VIRUS_UNITS_COUNT] * VIRUS_COUNT
+        self.victory_over_viruses = [False] * VIRUS_COUNT
         self.game_over = False
         self.winner = None
 
@@ -225,6 +226,8 @@ class Game:
                 return city
 
     def infection(self, city):
+        if self.victory_over_viruses[city.take_virus()]:
+            return True
         if self.viruses_units[city.take_virus()] == 0:
             return True
         quarantine_specialist = self.find_role(ROLE_QUARANTINE_SPECIALIST)
@@ -240,14 +243,20 @@ class Game:
         return False
 
     def medication(self, player, city):
-        if player.take_role() == ROLE_DOCTOR or self.vaccines[city.take_virus]:
+        if player.take_role() == ROLE_DOCTOR or self.vaccines[city.take_virus()]:
             if city.take_contamination() > 0:
                 self.viruses_units[city.take_virus()] += city.take_contamination()
                 city.nullify_contamination()
+                if self.vaccines[city.take_virus()] and \
+                        self.viruses_units[city.take_virus()] == VIRUS_UNITS_COUNT:
+                    self.victory_over_viruses[city.take_virus()] = True
                 return True
             return False
         if city.medication():
             self.viruses_units[city.take_virus()] += 1
+            if self.vaccines[city.take_virus()] and \
+                    self.viruses_units[city.take_virus()] == VIRUS_UNITS_COUNT:
+                self.victory_over_viruses[city.take_virus()] = True
             return True
         return False
 
