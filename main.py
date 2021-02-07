@@ -19,13 +19,15 @@ START_GROUPS_SIZE = 3
 MAX_CARDS_IN_HAND = 7
 PLAYER_ACTIONS = 4
 START_PLAYERS_CARDS = 6
+START = 'Атланта'
 # параметры победителя
 GAME_WIN = False
 PLAYERS_WIN = True
 # параметры рисовки
 IMAGE_W = 1357
 IMAGE_H = 628
-VIRUS_COLORS = [(10, 10, 10), (0, 0, 255), (255, 255, 0), (255, 0, 0)]
+PLAYER_COLORS = [(107,142,35), (255, 192, 203), (0, 206, 209), (192, 192, 192), (138, 43, 226), (255, 215, 0)]
+PLAYERS_INDENT = [(-8, -10), (3, 1), (-8, 1), (3, -10)]
 VIRUS_COLORS = [(10, 10, 10), (0, 10, 245), (255, 255, 0), (255, 0, 0)]
 CONTAMINATION_COLOR = (0, 100, 0)
 TEXT_COLOR = (0, 0, 0)
@@ -82,6 +84,8 @@ class Town:
 
         self.players = set()
         self.station = False
+        if name == START:
+            self.station = True
         self.contamination = 0
         self.neighbors = set()
 
@@ -188,7 +192,7 @@ class Game:
             num, name, cords, virus = city
             self.cities[name] = Town(num, name, cords, virus)
         for i in range(len(players)):
-            self.players.append(Player(i+1, players[i], self.cities['Атланта'].take_cords()))
+            self.players.append(Player(i, players[i], self.cities[START].take_cords()))
         self.cities_graph = []
         for c_1, c_2 in load_cities_graph():
             name_1, name_2 = cities_list[c_1][1], cities_list[c_2][1]
@@ -475,6 +479,9 @@ class Game:
     def who_win(self):
         return self.winner
 
+    def take_vaccines(self):
+        return self.vaccines
+
 
 def show_infectivity(screen, game):
     x, y = 50, 50
@@ -508,7 +515,7 @@ def show_player(screen, coord, player):
     x, y = coord
     font = pygame.font.Font(None, 25)
     text = font.render(str(ROLES[player.take_role()-1]), True, TEXT_COLOR)
-    draw.rect(screen, 'white', ((x, y), (250, 75)))
+    draw.rect(screen, PLAYER_COLORS[player.take_role()-1], ((x, y), (250, 75)))
     draw.rect(screen, (220, 220, 220), ((x, y-10), (text.get_width()+2, text.get_height()+2)))
     screen.blit(text, (x+1, y-9))
     dy = 15
@@ -518,7 +525,7 @@ def show_player(screen, coord, player):
         city = cities[i]
         font = pygame.font.Font(None, 20)
         text = font.render(str(city), True, TEXT_COLOR)
-        draw.rect(screen, (220, 220, 220), ((x+10, y+dy), (text.get_width() + 2, text.get_height() + 2)))
+        # draw.rect(screen, (220, 220, 220), ((x+10, y+dy), (text.get_width() + 2, text.get_height() + 2)))
         screen.blit(text, (x + 10, y+dy))
         dy += 15
         if text.get_width() + 2 > indent:
@@ -529,10 +536,27 @@ def show_player(screen, coord, player):
         city = cities[i]
         font = pygame.font.Font(None, 20)
         text = font.render(str(city), True, TEXT_COLOR)
-        draw.rect(screen, (220, 220, 220), ((x, y+dy), (text.get_width() + 2, text.get_height() + 2)))
+        # draw.rect(screen, (220, 220, 220), ((x, y+dy), (text.get_width() + 2, text.get_height() + 2)))
         screen.blit(text, (x, y+dy))
         dy += 15
+    x, y = player.take_location()
+    dx, dy = PLAYERS_INDENT[player.take_num()]
+    draw.circle(screen, PLAYER_COLORS[player.take_role()-1],  (x+dx, y+dy), 7)
 
+
+def show_vaccines(screen, game):
+    x, y = 1100, 20
+    vaccines = game.take_vaccines()
+    draw.rect(screen, 'white', ((x-75, y), (290, 60)))
+    font = pygame.font.Font(None, 20)
+    text = font.render('Вакцины', True, TEXT_COLOR)
+    screen.blit(text, (x-70, y+25))
+    for i in range(len(vaccines)):
+        vaccine = vaccines[i]
+        if vaccine:
+            draw.circle(screen, VIRUS_COLORS[i], (x+i*55+20, y+30), 25)
+        else:
+            draw.circle(screen, VIRUS_COLORS[i], (x+i*55+20, y+30), 25, width=2)
 
 #def show_palyers_pack(screen, game):
 
@@ -599,6 +623,7 @@ def new_cadr(screen, image, game):
         x += 270
     show_scale_outbreaks(screen, game)
     show_current_information(screen, game)
+    show_vaccines(screen, game)
 
 
 def show_game_over(screen, game):
@@ -619,7 +644,7 @@ def main():
     screen.fill(BACKGROUND_COLOR)
     screen.blit(image, (0, 0))
     pygame.display.flip()
-    game = Game([1, 3, 2, 4])
+    game = Game([1])
     running = True
     while running:
         for event in pygame.event.get():
@@ -627,7 +652,9 @@ def main():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 city = game.get_element(event.pos)
+                # print(game.take_current_player(), city)
                 game.action_with_city(game.take_current_player(), city)
+
         show_game_over(screen, game)
         new_cadr(screen, image, game)
         pygame.display.flip()
