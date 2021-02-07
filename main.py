@@ -17,6 +17,7 @@ VIRUS_UNITS_COUNT = 24
 START_GROUPS_SIZE = 3
 MAX_CARDS_IN_HAND = 7
 PLAYER_ACTIONS = 4
+START_PLAYERS_CARDS = 6
 # параметры победителя
 GAME_WIN = False
 PLAYERS_WIN = True
@@ -182,12 +183,17 @@ class Game:
         cities_names = [city[1] for city in cities_list]
         cards = cities_names + [INFECTION_CARD_NAME] * INFECTION_CARDS_COUNT
         shuffle(cards)
-        self.players_pack = iter(cards)
+        self.players_pack = iter(cards.copy())
         cards = cities_names * (MAK_CONTAMINATION + 1)
         shuffle(cards)
         while len(set(cards[:3 * START_GROUPS_SIZE])) != 3 * START_GROUPS_SIZE:
             shuffle(cards)
-        self.infection_pack = iter(cards)
+        self.infection_pack = iter(cards.copy())
+        self.complete_pack = cards
+
+        for player in self.players:
+            for _ in range(START_PLAYERS_CARDS - len(self.players)):
+                player.add_card(self.open_players_card())
 
         self.scale_outbreaks = 0
         self.scale_infectivity = 0
@@ -220,6 +226,10 @@ class Game:
 
     def infection(self, city):
         if self.viruses_units[city.take_virus()] == 0:
+            return True
+        quarantine_specialist = self.find_role(ROLE_QUARANTINE_SPECIALIST)
+        if city == quarantine_specialist.take_location() or \
+                city in quarantine_specialist.take_location().take_neighbors:
             return True
         if city.infection():
             self.viruses_units[city.take_virus()] -= 1
@@ -272,6 +282,11 @@ class Game:
         return None
 
     def open_infections_card(self):
+        if self.infection_pack:
+            return next(self.infection_pack)
+        cards = self.complete_pack.copy()
+        shuffle(cards)
+        self.infection_pack = iter(cards)
         return next(self.infection_pack)
 
     def receiving_cards(self, player):
