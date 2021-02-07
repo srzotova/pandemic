@@ -212,7 +212,8 @@ class Game:
     def take_cities_graph(self):
         return self.cities_graph
 
-    def get_element(self, x, y):
+    def get_element(self, coord):
+        x, y = coord
         for city in self.cities.values():
             cords = city.take_cords()
             dist = ((cords[0] - x) ** 2 + (cords[1] - y) ** 2) ** 0.5
@@ -376,7 +377,7 @@ class Game:
     def is_game_over(self):
         return self.game_over
 
-    def hwo_win(self):
+    def who_win(self):
         return self.winner
 
 
@@ -408,6 +409,9 @@ def show_player(screen, coord, player):
         draw.rect(screen, 'blue', ((x, y - 10), (text.get_width() + 2, text.get_height() + 2)))
         screen.blit(text, (x + dx, y))
         dx += text.get_height() + 2
+
+
+#def show_palyers_pack(screen, game):
 
 
 def new_map(screen, image, game):
@@ -460,6 +464,15 @@ def new_cadr(screen, image, game):
     show_player(screen, (10, 600), Player(1, 1, (225, 213)))
 
 
+def show_game_over(screen, game):
+    if game.who_win():
+        font = pygame.font.Font(None, 100)
+        text = font.render('Вы выиграли!', True, TEXT_COLOR)
+    else:
+        font = pygame.font.Font(None, 100)
+        text = font.render('Вы проиграли...', True, TEXT_COLOR)
+    screen.blit(text, (100, 100))
+
 def main():
     pygame.init()
     size = IMAGE_W, IMAGE_H+100
@@ -474,6 +487,10 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                city = game.get_element(event.pos)
+                game.action_with_city()
+        show_game_over(screen, game)
         new_cadr(screen, image, game)
         pygame.display.flip()
     pygame.quit()
