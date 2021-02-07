@@ -288,7 +288,11 @@ class Game:
                 player.add_card(card)
 
     def transfer_card(self, player_from, player_to, card):
-        if player_from.del_card(card):
+        if card not in player_from.take_hand():
+            return False
+        if player_to.take_location() == player_from.take_location() or \
+                player_to.take_role() == ROLE_RESEARCHER or player_from.take_role() == ROLE_RESEARCHER:
+            player_from.del_card(card)
             player_to.add_card(card)
             return True
         return False
