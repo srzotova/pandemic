@@ -106,6 +106,9 @@ class Town:
         self.contamination -= 1
         return True
 
+    def nullify_contamination(self):
+        self.contamination = 0
+
     def take_contamination(self):
         return self.contamination
 
@@ -150,6 +153,15 @@ class Player:
 
     def take_hand(self):
         return self.hand
+
+    def check_combination(self, cards):
+        hand_copy = self.hand.copy()
+        for card in cards:
+            index = hand_copy.index(card)
+            if index == -1:
+                return False
+            del hand_copy[index]
+        return True
 
 
 class Game:
@@ -216,7 +228,13 @@ class Game:
             return True
         return False
 
-    def medication(self, city):
+    def medication(self, player, city):
+        if player.take_role() == ROLE_DOCTOR:
+            if city.take_contamination() > 0:
+                self.viruses_units[city.take_virus()] += city.take_contamination()
+                city.nullify_contamination()
+                return True
+            return False
         if city.medication():
             self.viruses_units[city.take_virus()] += 1
             return True
@@ -273,21 +291,22 @@ class Game:
         return False
 
     def create_vaccine(self, player, virus, cards):
-        correct = True
-        deleted = []
-        for card in cards:
-            if player.del_card(card):
-                deleted.append(card)
-            else:
-                correct = False
-        if correct:
+        if self.vaccines[virus]:
+            return False
+        if INFECTION_CARD_NAME in cards:
+            return False
+        if player.take_role() == ROLE_SCIENTIST and len(cards) >= 4:
+            cards = cards[:4]
+        elif len(cards) >= 5:
+            cards = cards[:5]
+        else:
+            return False
+        if player.check_combination(cards) and \
+                all(map(lambda card: self.cities[card].virus == virus, cards)):
+            for card in cards:
+                player.del_card(card)
             self.vaccines[virus] = True
-            if all(self.vaccines):
-                self.game_over = True
-                self.winner = PLAYERS_WIN
             return True
-        for card in deleted:
-            player.add_card(card)
         return False
 
     def simple_moving(self, player, city):
@@ -314,6 +333,11 @@ class Game:
         return False
 
     def build_station(self, player, card):
+        if player.take_role() == ROLE_ENGINEER:
+            if not player.location().is_station():
+                player.location().build_station()
+                return True
+            return False
         if player.location().take_name() == card and not player.location().is_station():
             player.location().build_station()
             player.del_card(card)
