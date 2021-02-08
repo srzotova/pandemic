@@ -34,7 +34,7 @@ TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 8
 BACKGROUND_COLOR = (112, 146, 190)
-BUTTONS_COORDS = [(50, 470), (122, 470), (50, 542), (122, 542)]
+BUTTONS_CORDS = [(50, 470), (122, 470), (50, 542), (122, 542), (225, 600)]
 BUTTON_RADIUS = 35
 # игровые роли
 ROLE_DISPATCHER = 1
@@ -167,9 +167,9 @@ class Player:
         self.hand.append(card)
 
     def del_card(self, card):
-        if card.take_name() not in self.hand:
+        if card not in self.hand:
             return False
-        index = self.hand.index(card.take_name())
+        index = self.hand.index(card)
         del self.hand[index]
         return True
 
@@ -446,7 +446,7 @@ class Game:
             return True
         if self.work_moving(player, city):
             return True
-        if player.take_location() == card or city == card:
+        if player.take_location() == card or city.take_name() == card:
             self.move_player(player, city)
             self.current_player.del_card(card)
             return True
@@ -597,13 +597,13 @@ def show_pack(screen, game):
     for i in range(min(len(cities), 9)):
         city = cities[i]
         text = font.render(city, True, TEXT_COLOR)
-        screen.blit(text, (x, y+dy))
+        screen.blit(text, (x, y + dy))
         dy += 15
     dy = 15
     for i in range(9, len(cities)):
         city = cities[i]
         text = font.render(city, True, TEXT_COLOR)
-        screen.blit(text, (x+110, y + dy))
+        screen.blit(text, (x + 110, y + dy))
         dy += 15
 
 
@@ -671,7 +671,7 @@ def new_cadr(screen, image, game):
     show_scale_outbreaks(screen, game)
     show_current_information(screen, game)
     show_vaccines(screen, game)
-    buttons(screen)
+    buttons(screen, game)
     show_pack(screen, game)
 
 
@@ -685,8 +685,8 @@ def show_game_over(screen, game):
     screen.blit(text, (100, 100))
 
 
-def buttons(screen):
-    x, y = BUTTONS_COORDS[0]
+def buttons(screen, game):
+    x, y = BUTTONS_CORDS[0]
     draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
     font = pygame.font.Font(None, 17)
     text = font.render('Перейти в', True, TEXT_COLOR)
@@ -696,7 +696,7 @@ def buttons(screen):
     text = font.render('город', True, TEXT_COLOR)
     screen.blit(text, (x - 27, y + 8))
 
-    x, y = BUTTONS_COORDS[1]
+    x, y = BUTTONS_CORDS[1]
     draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
     font = pygame.font.Font(None, 17)
     text = font.render('Построить', True, TEXT_COLOR)
@@ -705,7 +705,7 @@ def buttons(screen):
     text = font.render('станцию', True, TEXT_COLOR)
     screen.blit(text, (x - 27, y - 2))
 
-    x, y = BUTTONS_COORDS[2]
+    x, y = BUTTONS_CORDS[2]
     draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
     font = pygame.font.Font(None, 17)
     text = font.render('Бороться с', True, TEXT_COLOR)
@@ -713,6 +713,25 @@ def buttons(screen):
     font = pygame.font.Font(None, 17)
     text = font.render('заражением', True, TEXT_COLOR)
     screen.blit(text, (x - 33, y - 2))
+
+    x, y = BUTTONS_CORDS[3]
+    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
+    font = pygame.font.Font(None, 17)
+    text = font.render('Передать', True, TEXT_COLOR)
+    screen.blit(text, (x - 27, y - 12))
+    font = pygame.font.Font(None, 17)
+    text = font.render('карту', True, TEXT_COLOR)
+    screen.blit(text, (x - 25, y - 2))
+
+    if game.take_current_player().take_role() == ROLE_DISPATCHER:
+        x, y = BUTTONS_CORDS[4]
+        draw.circle(screen, 'white', (x, y), BUTTON_RADIUS + 1)
+        font = pygame.font.Font(None, 15)
+        text = font.render('Организовать', True, TEXT_COLOR)
+        screen.blit(text, (x - 35, y - 9))
+        font = pygame.font.Font(None, 15)
+        text = font.render('перелет', True, TEXT_COLOR)
+        screen.blit(text, (x - 28, y))
 
 
 def main():
@@ -726,6 +745,8 @@ def main():
     game = Game([1, 2, 3, 4])
     running = True
     chosen_city = []
+    chosen_player = None
+    chosen_player_cords = (-100, -100)
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -739,27 +760,67 @@ def main():
                         chosen_city.pop(chosen_city.index(city))
                 else:
                     ex, ey = event.pos
-                    for i in range(4):
-                        x, y = BUTTONS_COORDS[i]
+                    for i in range(5):
+                        x, y = BUTTONS_CORDS[i]
                         dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
                         if dist <= BUTTON_RADIUS:
                             if i == 1:
                                 if len(chosen_city) == 1:
                                     if game.build_station(game.take_current_player(), chosen_city[0]):
                                         game.spending_action()
+                                        break
                             if i == 0:
                                 if len(chosen_city) == 1:
-                                    if game.action_with_city(game.take_current_player(), chosen_city[0]):
-                                        game.spending_action()
+                                    if chosen_city[0].take_name() in game.take_current_player().take_hand() or \
+                                            chosen_city[0] in \
+                                            game.take_current_player().take_location().take_neighbors():
+                                        if game.action_with_city(game.take_current_player(),
+                                                                 chosen_city[0], chosen_city[0].take_name()):
+                                            game.spending_action()
+                                            break
                             if i == 2:
                                 if game.fighting_virus(game.take_current_player()):
                                     game.spending_action()
-
+                                    break
+                            if i == 3:
+                                if chosen_player and len(chosen_city) == 1 and \
+                                        game.transfer_card(game.take_current_player(),
+                                                           chosen_player, chosen_city[0].take_name()):
+                                    game.spending_action()
+                                    chosen_player = None
+                                    chosen_player_cords = (-100, -100)
+                                    break
+                            if i == 4:
+                                if chosen_city[0].take_name() in game.take_current_player().take_hand():
+                                    if chosen_player and len(chosen_city) == 1 and \
+                                            game.dispatcher_action(chosen_player,
+                                                                   chosen_city[0], chosen_city[0].take_name()):
+                                        game.spending_action()
+                                        chosen_player = None
+                                        chosen_player_cords = (-100, -100)
+                                        break
+                                if chosen_city[0] in game.take_current_player().take_location().take_neighbors() or \
+                                        len(chosen_city[0].take_players()) > 0:
+                                    if chosen_player and len(chosen_city) == 1 and \
+                                            game.dispatcher_action(chosen_player,
+                                                                   chosen_city[0], None):
+                                        game.spending_action()
+                                        chosen_player = None
+                                        chosen_player_cords = (-100, -100)
+                                        break
+                    for i in range(4):
+                        x, y = 20 + i * 270, 600
+                        dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
+                        if dist <= 32.5:
+                            chosen_player = game.take_players()[i]
+                            chosen_player_cords = (x + 100, y)
         show_game_over(screen, game)
         new_cadr(screen, image, game)
         for city in chosen_city:
             # print(city.take_name())
             draw.circle(screen, 'orange', city.take_cords(), CITY_RADIUS + 10)
+        draw.circle(screen, 'orange', chosen_player_cords, CITY_RADIUS + 10)
+        # print(chosen_player)
         pygame.display.flip()
     pygame.quit()
 
