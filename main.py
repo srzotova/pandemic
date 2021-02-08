@@ -34,7 +34,7 @@ TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 8
 BACKGROUND_COLOR = (112, 146, 190)
-BUTTONS_CORDS = [(50, 470), (122, 470), (50, 542), (122, 542), (225, 600)]
+BUTTONS_CORDS = [(50, 470), (122, 470), (50, 542), (122, 542), (225, 600), (780, 40)]
 BUTTON_RADIUS = 35
 # игровые роли
 ROLE_DISPATCHER = 1
@@ -733,6 +733,14 @@ def buttons(screen, game):
         text = font.render('перелет', True, TEXT_COLOR)
         screen.blit(text, (x - 28, y))
 
+    x, y = BUTTONS_CORDS[5]
+    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
+    font = pygame.font.Font(None, 17)
+    text = font.render('Создать', True, TEXT_COLOR)
+    screen.blit(text, (x - 27, y - 12))
+    font = pygame.font.Font(None, 17)
+    text = font.render('вакцину', True, TEXT_COLOR)
+    screen.blit(text, (x - 25, y - 2))
 
 def main():
     pygame.init()
@@ -760,7 +768,7 @@ def main():
                         chosen_city.pop(chosen_city.index(city))
                 else:
                     ex, ey = event.pos
-                    for i in range(5):
+                    for i in range(6):
                         x, y = BUTTONS_CORDS[i]
                         dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
                         if dist <= BUTTON_RADIUS:
@@ -799,8 +807,7 @@ def main():
                                         chosen_player = None
                                         chosen_player_cords = (-100, -100)
                                         break
-                                if chosen_city[0] in game.take_current_player().take_location().take_neighbors() or \
-                                        len(chosen_city[0].take_players()) > 0:
+                                if len(chosen_city[0].take_players()) > 0:
                                     if chosen_player and len(chosen_city) == 1 and \
                                             game.dispatcher_action(chosen_player,
                                                                    chosen_city[0], None):
@@ -808,12 +815,21 @@ def main():
                                         chosen_player = None
                                         chosen_player_cords = (-100, -100)
                                         break
+                            if i == 5:
+                                if len(chosen_city) == 1 and \
+                                    game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
+                                                       game.take_current_player().take_hand()):
+                                    game.spending_action()
                     for i in range(4):
                         x, y = 20 + i * 270, 600
                         dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
                         if dist <= 32.5:
-                            chosen_player = game.take_players()[i]
-                            chosen_player_cords = (x + 100, y)
+                            if chosen_player == game.take_players()[i]:
+                                chosen_player = None
+                                chosen_player_cords = (-100, -100)
+                            else:
+                                chosen_player = game.take_players()[i]
+                                chosen_player_cords = (x + 100, y)
         show_game_over(screen, game)
         new_cadr(screen, image, game)
         for city in chosen_city:
