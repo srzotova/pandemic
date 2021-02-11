@@ -220,6 +220,7 @@ class Game:
             shuffle(stack)
             cards += stack
         self.players_pack = iter(cards.copy())
+        self.len_players_pack = len(list(iter(cards.copy())))
         cards = cities_names * (MAK_CONTAMINATION + 1)
         shuffle(cards)
         while len(set(cards[:3 * START_GROUPS_SIZE])) != 3 * START_GROUPS_SIZE:
@@ -300,6 +301,9 @@ class Game:
             return True
         return False
 
+    def take_viruses_unit(self):
+        return self.viruses_units
+
     def outbreak(self, start_city):
         self.scale_outbreaks += 1
         infected = queue.Queue()
@@ -327,6 +331,7 @@ class Game:
 
     def open_players_card(self):
         if self.players_pack:
+            self.len_players_pack -= 1
             return next(self.players_pack)
         return None
 
@@ -441,6 +446,8 @@ class Game:
             return False
         if player.take_location() == city:
             return False
+        if self.simple_moving(player, city):
+            return True
         if city.take_players():
             self.move_player(player, city)
             return True
@@ -499,6 +506,9 @@ class Game:
 
     def take_last_infections(self):
         return self.last_infections
+
+    def take_player_pack(self):
+        return self.len_players_pack
 
     def is_game_over(self):
         return self.game_over
@@ -586,6 +596,19 @@ def show_vaccines(screen, game):
             draw.circle(screen, VIRUS_COLORS[i], (x + i * 55 + 20, y + 30), 25, width=2)
 
 
+def show_number_of_player_cards(screen, game):
+    x, y = 195, 50
+    draw.circle(screen, 'white', (x, y), 33)
+    font = pygame.font.Font(None, 40)
+    text = font.render(str(game.take_player_pack()), True, TEXT_COLOR)
+    screen.blit(text, (x - 6, y - 24))
+    font = pygame.font.Font(None, 15)
+    text = font.render('Количество', True, TEXT_COLOR)
+    screen.blit(text, (x - 30, y))
+    text = font.render('вспышек', True, TEXT_COLOR)
+    screen.blit(text, (x - 25, y + 8))
+
+
 def show_pack(screen, game):
     x, y = 1125, 15
     draw.rect(screen, 'white', ((x - 5, y), (230, 150)))
@@ -661,6 +684,19 @@ def new_map(screen, image, game):
             screen.blit(text, (x - 5, y + 7))
 
 
+def show_viruses(screen, game):
+    x, y = 580, 40
+    font = pygame.font.Font(None, 20)
+    for i in range(len(game.take_viruses_unit())):
+        virus_units = game.take_viruses_unit()[i]
+        if i < 2:
+            text = font.render(str(virus_units), True, (255, 255, 255))
+        else:
+            text = font.render(str(virus_units), True, TEXT_COLOR)
+        draw.circle(screen, VIRUS_COLORS[i], (x + i*43, y), 20)
+        screen.blit(text, (x + i*43-7, y-7))
+
+
 def new_cadr(screen, image, game):
     new_map(screen, image, game)
     show_infectivity(screen, game)
@@ -673,6 +709,8 @@ def new_cadr(screen, image, game):
     show_vaccines(screen, game)
     buttons(screen, game)
     show_pack(screen, game)
+    show_viruses(screen, game)
+    show_number_of_player_cards(screen, game)
 
 
 def show_game_over(screen, game):
@@ -742,6 +780,7 @@ def buttons(screen, game):
     text = font.render('вакцину', True, TEXT_COLOR)
     screen.blit(text, (x - 25, y - 2))
 
+
 def main():
     pygame.init()
     size = IMAGE_W, IMAGE_H + 100
@@ -807,7 +846,8 @@ def main():
                                         chosen_player = None
                                         chosen_player_cords = (-100, -100)
                                         break
-                                if len(chosen_city[0].take_players()) > 0:
+                                if len(chosen_city[0].take_players()) > 0 or chosen_city[0] in \
+                                        chosen_player.take_location().take_neighbors():
                                     if chosen_player and len(chosen_city) == 1 and \
                                             game.dispatcher_action(chosen_player,
                                                                    chosen_city[0], None):
@@ -817,8 +857,8 @@ def main():
                                         break
                             if i == 5:
                                 if len(chosen_city) == 1 and \
-                                    game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
-                                                       game.take_current_player().take_hand()):
+                                        game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
+                                                            game.take_current_player().take_hand()):
                                     game.spending_action()
                     for i in range(4):
                         x, y = 20 + i * 270, 600
