@@ -5,6 +5,7 @@ import sys
 import queue
 from random import shuffle
 from pygame import draw
+import pygame_gui
 
 # параметры игровых механик
 MAK_CONTAMINATION = 4
@@ -784,10 +785,7 @@ def buttons(screen, game):
     screen.blit(text, (x - 25, y - 2))
 
 
-def main():
-    pygame.init()
-    size = IMAGE_W, IMAGE_H + 100
-    screen = pygame.display.set_mode(size)
+def main(screen):
     image = load_image('map.png')
     screen.fill(BACKGROUND_COLOR)
     screen.blit(image, (0, 0))
@@ -886,5 +884,75 @@ def main():
     pygame.quit()
 
 
+def start_page(screen):
+    screen.fill(BACKGROUND_COLOR)
+    pygame.display.flip()
+    running = True
+    manager = pygame_gui.UIManager((IMAGE_W, IMAGE_H + 100))
+    role_1 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
+        options_list=ROLES,
+        starting_option=ROLES[-1],
+        relative_rect=pygame.Rect((100, 100), (100, 20)),
+        manager=manager
+    )
+    role_2 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
+        options_list=ROLES,
+        starting_option=ROLES[-1],
+        relative_rect=pygame.Rect((300, 100), (200, 20)),
+        manager=manager
+    )
+    role_3 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
+        options_list=ROLES,
+        starting_option=ROLES[-1],
+        relative_rect=pygame.Rect((500, 100), (200, 20)),
+        manager=manager
+    )
+    role_4 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
+        options_list=ROLES,
+        starting_option=ROLES[-1],
+        relative_rect=pygame.Rect((700, 100), (100, 20)),
+        manager=manager
+    )
+
+    confirm = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect((20, 20), (100, 20)),
+        text='Начать игру',
+        manager=manager
+    )
+
+    chosen_roles = ROLES[:4]
+
+    clock = pygame.time.Clock()
+    while running:
+        time_delta = clock.tick(60) / 1000.0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
+                    if event.ui_element == role_1:
+                        chosen_roles[0] = event.text
+                    if event.ui_element == role_2:
+                        chosen_roles[1] = event.text
+                    if event.ui_element == role_3:
+                        chosen_roles[2] = event.text
+                    if event.ui_element == role_4:
+                        chosen_roles[3] = event.text
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    return True
+
+                manager.process_events(event)
+        manager.update(time_delta)
+        manager.draw_ui(screen)
+        screen.blit(, (0, 0))
+        pygame.display.update()
+
+
 if __name__ == '__main__':
-    main()
+    pygame.init()
+    size = IMAGE_W, IMAGE_H + 100
+    screen = pygame.display.set_mode(size)
+    start_page(screen)
+    main(screen)
+
