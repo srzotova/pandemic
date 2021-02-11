@@ -34,8 +34,9 @@ TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 8
 BACKGROUND_COLOR = (112, 146, 190)
-BUTTONS_CORDS = [(50, 470), (122, 470), (50, 542), (122, 542), (225, 600), (780, 40)]
+BUTTONS_CORDS = [(50, 470-30), (122, 470-30), (50, 542-30), (122, 542-30), (225, 600), (780, 40)]
 BUTTON_RADIUS = 35
+CHOOSE_COLOR = (220, 20, 60)
 # игровые роли
 ROLE_DISPATCHER = 1
 ROLE_DOCTOR = 2
@@ -601,12 +602,14 @@ def show_number_of_player_cards(screen, game):
     draw.circle(screen, 'white', (x, y), 33)
     font = pygame.font.Font(None, 40)
     text = font.render(str(game.take_player_pack()), True, TEXT_COLOR)
-    screen.blit(text, (x - 6, y - 24))
+    screen.blit(text, (x - 15, y - 24))
     font = pygame.font.Font(None, 15)
     text = font.render('Количество', True, TEXT_COLOR)
     screen.blit(text, (x - 30, y))
-    text = font.render('вспышек', True, TEXT_COLOR)
-    screen.blit(text, (x - 25, y + 8))
+    text = font.render('карт', True, TEXT_COLOR)
+    screen.blit(text, (x - 15, y + 8))
+    text = font.render('игроков', True, TEXT_COLOR)
+    screen.blit(text, (x - 20, y + 16))
 
 
 def show_pack(screen, game):
@@ -874,8 +877,10 @@ def main():
         new_cadr(screen, image, game)
         for city in chosen_city:
             # print(city.take_name())
-            draw.circle(screen, 'orange', city.take_cords(), CITY_RADIUS + 10)
-        draw.circle(screen, 'orange', chosen_player_cords, CITY_RADIUS + 10)
+            x, y = city.take_cords()
+            draw.polygon(screen, CHOOSE_COLOR, ((x+10, y), (x+20, y+10), (x+20, y-10)))
+        x, y = chosen_player_cords
+        draw.polygon(screen, CHOOSE_COLOR, ((x-70, y-10), (x-50, y-30), (x-90, y-30)))
         # print(chosen_player)
         pygame.display.flip()
     pygame.quit()
