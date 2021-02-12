@@ -844,23 +844,13 @@ def main(screen, players):
                                     chosen_player_cords = (-100, -100)
                                     break
                             if i == 4:
-                                if chosen_city[0].take_name() in game.take_current_player().take_hand():
-                                    if chosen_player and len(chosen_city) == 1 and \
+                                if chosen_player and len(chosen_city) == 1 and \
                                             game.dispatcher_action(chosen_player,
                                                                    chosen_city[0], chosen_city[0].take_name()):
-                                        game.spending_action()
-                                        chosen_player = None
-                                        chosen_player_cords = (-100, -100)
-                                        break
-                                if len(chosen_city[0].take_players()) > 0 or chosen_city[0] in \
-                                        chosen_player.take_location().take_neighbors():
-                                    if chosen_player and len(chosen_city) == 1 and \
-                                            game.dispatcher_action(chosen_player,
-                                                                   chosen_city[0], None):
-                                        game.spending_action()
-                                        chosen_player = None
-                                        chosen_player_cords = (-100, -100)
-                                        break
+                                    game.spending_action()
+                                    chosen_player = None
+                                    chosen_player_cords = (-100, -100)
+                                    break
                             if i == 5:
                                 if len(chosen_city) == 1 and \
                                         game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
