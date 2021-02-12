@@ -45,7 +45,10 @@ ROLE_SCIENTIST = 3
 ROLE_RESEARCHER = 4
 ROLE_ENGINEER = 5
 ROLE_QUARANTINE_SPECIALIST = 6
-ROLES = ['Диспетчер', 'Доктор', 'Ученый', 'Исследователь', 'Инженер', 'Специалист по карантину']
+ROLES = ['Диспетчер', 'Доктор', 'Ученый', 'Исследователь', 'Инженер', 'Специалист по карантину', 'Нет']
+NUMBER_BY_ROLE = {
+    'Диспетчер': 1, 'Доктор': 2, 'Ученый': 3, 'Исследователь': 4, 'Инженер': 5, 'Специалист по карантину': 6, 'Нет': -1
+}
 
 
 def load_cities():
@@ -275,7 +278,7 @@ class Game:
         quarantine_specialist = self.find_role(ROLE_QUARANTINE_SPECIALIST)
         if quarantine_specialist:
             if city == quarantine_specialist.take_location() or \
-                    city in quarantine_specialist.take_neighbors():
+                    city in quarantine_specialist.take_location().take_neighbors():
                 return True
         if city.infection():
             self.viruses_units[city.take_virus()] -= 1
@@ -720,7 +723,7 @@ def new_cadr(screen, image, game):
 def show_game_over(screen, game):
     if game.who_win():
         font = pygame.font.Font(None, 100)
-        text = font.render('Вы выиграли!', True, TEXT_COLOR)
+        text = font.render('Вы выиграли! Мир спасен!', True, TEXT_COLOR)
     else:
         font = pygame.font.Font(None, 100)
         text = font.render('Вы проиграли...', True, TEXT_COLOR)
@@ -766,7 +769,7 @@ def buttons(screen, game):
     screen.blit(text, (x - 25, y - 2))
 
     if game.take_current_player().take_role() == ROLE_DISPATCHER:
-        x, y = BUTTONS_CORDS[4]
+        x, y = (225 + game.take_current_player().take_num()*300, 600)
         draw.circle(screen, 'white', (x, y), BUTTON_RADIUS + 1)
         font = pygame.font.Font(None, 15)
         text = font.render('Организовать', True, TEXT_COLOR)
@@ -785,12 +788,12 @@ def buttons(screen, game):
     screen.blit(text, (x - 25, y - 2))
 
 
-def main(screen):
+def main(screen, players):
     image = load_image('map.png')
     screen.fill(BACKGROUND_COLOR)
     screen.blit(image, (0, 0))
     pygame.display.flip()
-    game = Game([1, 2, 3, 4])
+    game = Game(players)
     running = True
     chosen_city = []
     chosen_player = None
@@ -885,67 +888,72 @@ def main(screen):
 
 
 def start_page(screen):
-    screen.fill(BACKGROUND_COLOR)
-    pygame.display.flip()
-    running = True
+    background = pygame.Surface((IMAGE_W, IMAGE_H + 100), True, BACKGROUND_COLOR)
+
+    background.fill(BACKGROUND_COLOR)
+
     manager = pygame_gui.UIManager((IMAGE_W, IMAGE_H + 100))
+
     role_1 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
         options_list=ROLES,
         starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((100, 100), (100, 20)),
+        relative_rect=pygame.Rect((150, 100), (250, 30)),
         manager=manager
     )
     role_2 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
         options_list=ROLES,
         starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((300, 100), (200, 20)),
+        relative_rect=pygame.Rect((150, 140), (250, 30)),
         manager=manager
     )
     role_3 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
         options_list=ROLES,
         starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((500, 100), (200, 20)),
+        relative_rect=pygame.Rect((150, 180), (250, 30)),
         manager=manager
     )
     role_4 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
         options_list=ROLES,
         starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((700, 100), (100, 20)),
+        relative_rect=pygame.Rect((150, 220), (250, 30)),
         manager=manager
     )
-
     confirm = pygame_gui.elements.UIButton(
-        relative_rect=pygame.Rect((20, 20), (100, 20)),
+        relative_rect=pygame.Rect((150, 300), (250, 40)),
         text='Начать игру',
         manager=manager
     )
 
-    chosen_roles = ROLES[:4]
-
+    chosen_roles = [-1] * 4
+    running = True
     clock = pygame.time.Clock()
     while running:
         time_delta = clock.tick(60) / 1000.0
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
                     if event.ui_element == role_1:
-                        chosen_roles[0] = event.text
+                        chosen_roles[0] = NUMBER_BY_ROLE[event.text]
                     if event.ui_element == role_2:
-                        chosen_roles[1] = event.text
+                        chosen_roles[1] = NUMBER_BY_ROLE[event.text]
                     if event.ui_element == role_3:
-                        chosen_roles[2] = event.text
+                        chosen_roles[2] = NUMBER_BY_ROLE[event.text]
                     if event.ui_element == role_4:
-                        chosen_roles[3] = event.text
+                        chosen_roles[3] = NUMBER_BY_ROLE[event.text]
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    return True
-
-                manager.process_events(event)
+                    if event.ui_element == confirm:
+                        tmp = []
+                        for role in chosen_roles:
+                            if role != -1:
+                                tmp.append(role)
+                        if len(set(tmp)) == len(tmp):
+                            return tmp
+            manager.process_events(event)
         manager.update(time_delta)
+        screen.blit(background, (0, 0))
         manager.draw_ui(screen)
-        screen.blit(, (0, 0))
         pygame.display.update()
 
 
@@ -953,6 +961,8 @@ if __name__ == '__main__':
     pygame.init()
     size = IMAGE_W, IMAGE_H + 100
     screen = pygame.display.set_mode(size)
-    start_page(screen)
-    main(screen)
+    players = start_page(screen)
+    print(players)
+    if players:
+        main(screen, players)
 
