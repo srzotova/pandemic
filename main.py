@@ -813,6 +813,8 @@ def main(screen, players):
                     ex, ey = event.pos
                     for i in range(6):
                         x, y = BUTTONS_CORDS[i]
+                        if i == 4:
+                            x += game.take_current_player().take_num() * 300
                         dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
                         if dist <= BUTTON_RADIUS:
                             if i == 1:
