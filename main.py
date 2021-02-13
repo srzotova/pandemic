@@ -33,7 +33,7 @@ VIRUS_COLORS = [(10, 10, 10), (0, 10, 245), (255, 255, 0), (255, 0, 0)]
 CONTAMINATION_COLOR = (0, 100, 0)
 TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
-CITY_RADIUS = 8
+CITY_RADIUS = 15
 BACKGROUND_COLOR = (112, 146, 190)
 BUTTONS_CORDS = [(50, 470-30), (122, 470-30), (50, 542-30), (122, 542-30), (225, 600), (780, 40)]
 BUTTON_RADIUS = 35
@@ -852,9 +852,8 @@ def main(screen, players):
                                     chosen_player_cords = (-100, -100)
                                     break
                             if i == 5:
-                                if len(chosen_city) == 1 and \
-                                        game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
-                                                            game.take_current_player().take_hand()):
+                                if game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
+                                                            [city.take_name() for city in chosen_city]):
                                     game.spending_action()
                     for i in range(4):
                         x, y = 20 + i * 270, 600
@@ -954,7 +953,6 @@ if __name__ == '__main__':
     size = IMAGE_W, IMAGE_H + 100
     screen = pygame.display.set_mode(size)
     players = start_page(screen)
-    print(players)
     if players:
         main(screen, players)
 
