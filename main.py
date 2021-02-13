@@ -38,6 +38,7 @@ BACKGROUND_COLOR = (112, 146, 190)
 BUTTONS_CORDS = [(50, 470-30), (122, 470-30), (50, 542-30), (122, 542-30), (225, 600), (780, 40)]
 BUTTON_RADIUS = 35
 CHOOSE_COLOR = (220, 20, 60)
+EDGE_COLOR = (255, 255, 255)
 # игровые роли
 ROLE_DISPATCHER = 1
 ROLE_DOCTOR = 2
@@ -52,6 +53,7 @@ NUMBER_BY_ROLE = {
 
 
 def load_cities():
+    # загрузка городов из csv-файла
     cities = []
     with open('cities.csv', encoding="utf8") as csvfile:
         reader = csv.reader(csvfile, delimiter=';', quotechar='"')
@@ -65,6 +67,7 @@ def load_cities():
 
 
 def load_cities_graph():
+    # загрузка связей между городами из csv-файла
     graph = []
     with open('graph.csv', encoding="utf8") as csvfile:
         reader = csv.reader(csvfile, delimiter=';', quotechar='"')
@@ -76,6 +79,7 @@ def load_cities_graph():
 
 
 def load_image(name, colorkey=None):
+    # картинка для фона - карта мира
     if not os.path.isfile(name):
         print(f"Файл с изображением '{name}' не найден")
         sys.exit()
@@ -526,6 +530,7 @@ class Game:
 
 
 def show_infectivity(screen, game):
+    # отрисовка счетчика скрости заражения
     x, y = 50, 50
     draw.circle(screen, 'white', (x, y), 33)
     font = pygame.font.Font(None, 40)
@@ -534,12 +539,12 @@ def show_infectivity(screen, game):
     font = pygame.font.Font(None, 15)
     text = font.render('Скорость', True, TEXT_COLOR)
     screen.blit(text, (x - 24, y))
-    font = pygame.font.Font(None, 15)
     text = font.render('заражения', True, TEXT_COLOR)
     screen.blit(text, (x - 27, y + 8))
 
 
 def show_scale_outbreaks(screen, game):
+    # отрисовка счетчика количества вспышек
     x, y = 125, 50
     draw.circle(screen, 'white', (x, y), 33)
     font = pygame.font.Font(None, 40)
@@ -548,12 +553,12 @@ def show_scale_outbreaks(screen, game):
     font = pygame.font.Font(None, 15)
     text = font.render('Количество', True, TEXT_COLOR)
     screen.blit(text, (x - 30, y))
-    font = pygame.font.Font(None, 15)
     text = font.render('вспышек', True, TEXT_COLOR)
     screen.blit(text, (x - 25, y + 8))
 
 
 def show_player(screen, coord, player):
+    # отрисовка карточек игроков со списком из карт-городов
     x, y = coord
     font = pygame.font.Font(None, 25)
     text = font.render(str(ROLES[player.take_role() - 1]), True, TEXT_COLOR)
@@ -567,7 +572,6 @@ def show_player(screen, coord, player):
         city = cities[i]
         font = pygame.font.Font(None, 20)
         text = font.render(str(city), True, TEXT_COLOR)
-        # draw.rect(screen, (220, 220, 220), ((x+10, y+dy), (text.get_width() + 2, text.get_height() + 2)))
         screen.blit(text, (x + 10, y + dy))
         dy += 15
         if text.get_width() + 2 > indent:
@@ -578,7 +582,6 @@ def show_player(screen, coord, player):
         city = cities[i]
         font = pygame.font.Font(None, 20)
         text = font.render(str(city), True, TEXT_COLOR)
-        # draw.rect(screen, (220, 220, 220), ((x, y+dy), (text.get_width() + 2, text.get_height() + 2)))
         screen.blit(text, (x, y + dy))
         dy += 15
     x, y = player.take_location().take_cords()
@@ -661,8 +664,8 @@ def new_map(screen, image, game):
                 x2, y2 = neighbor.take_cords()
                 if x1 > x2:
                     x1, y1 = x2, y2
-                draw.line(screen, (220, 220, 220), (x1, y1), (0, (y1 + y2) // 2), width=3)
-                draw.line(screen, (220, 220, 220), (x2, y2), (IMAGE_W, (y1 + y2) // 2), width=3)
+                draw.line(screen, EDGE_COLOR, (x1, y1), (0, (y1 + y2) // 2), width=3)
+                draw.line(screen, EDGE_COLOR, (x2, y2), (IMAGE_W, (y1 + y2) // 2), width=3)
                 font = pygame.font.Font(None, 20)
                 text = font.render(neighbor.take_name(), True, TEXT_COLOR)
                 screen.blit(text, (0, (y1 + y2) // 2))
@@ -670,10 +673,10 @@ def new_map(screen, image, game):
                 text = font.render(city.take_name(), True, TEXT_COLOR)
                 screen.blit(text, (IMAGE_W - 105, (y1 + y2) // 2))
             elif (int(neighbor.take_num()), int(city.take_num())) not in exceptions:
-                draw.line(screen, (220, 220, 220), city.take_cords(), neighbor.take_cords(), width=3)
+                draw.line(screen, EDGE_COLOR, city.take_cords(), neighbor.take_cords(), width=3)
     for city in cities:
         x, y = city.take_cords()
-        draw.circle(screen, VIRUS_COLORS[city.take_virus()], (x, y), 15)
+        draw.circle(screen, VIRUS_COLORS[city.take_virus()], (x, y), CITY_RADIUS)
         if city.is_station():
             draw.polygon(screen, STATION_COLOR,
                          ((x + 5, y), (x + 5, y - 7), (x + 7 + 5, y - 14), (x + 19, y - 7), (x + 19, y)))
@@ -852,9 +855,10 @@ def main(screen, players):
                                     chosen_player_cords = (-100, -100)
                                     break
                             if i == 5:
-                                if game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
-                                                            [city.take_name() for city in chosen_city]):
-                                    game.spending_action()
+                                if len(chosen_city) > 0:
+                                    if game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
+                                                                [city.take_name() for city in chosen_city]):
+                                        game.spending_action()
                     for i in range(4):
                         x, y = 20 + i * 270, 600
                         dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
