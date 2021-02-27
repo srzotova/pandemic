@@ -35,7 +35,7 @@ TEXT_COLOR = (0, 0, 0)
 STATION_COLOR = (225, 255, 255)
 CITY_RADIUS = 15
 BACKGROUND_COLOR = (112, 146, 190)
-BUTTONS_CORDS = [(50, 470-30), (122, 470-30), (50, 542-30), (122, 542-30), (225, 600), (780, 40)]
+# BUTTONS_CORDS = [(50, 470 - 30), (122, 470 - 30), (50, 542 - 30), (122, 542 - 30), (225, 600), (780, 40)]
 BUTTON_RADIUS = 35
 CHOOSE_COLOR = (220, 20, 60)
 EDGE_COLOR = (255, 255, 255)
@@ -703,11 +703,11 @@ def show_viruses(screen, game):
             text = font.render(str(virus_units), True, (255, 255, 255))
         else:
             text = font.render(str(virus_units), True, TEXT_COLOR)
-        draw.circle(screen, VIRUS_COLORS[i], (x + i*43, y), 20)
-        screen.blit(text, (x + i*43-7, y-7))
+        draw.circle(screen, VIRUS_COLORS[i], (x + i * 43, y), 20)
+        screen.blit(text, (x + i * 43 - 7, y - 7))
 
 
-def new_cadr(screen, image, game):
+def new_cadr(screen, image, game, buttons):
     new_map(screen, image, game)
     show_infectivity(screen, game)
     x = 20
@@ -717,7 +717,8 @@ def new_cadr(screen, image, game):
     show_scale_outbreaks(screen, game)
     show_current_information(screen, game)
     show_vaccines(screen, game)
-    buttons(screen, game)
+    for button in buttons:
+        button.draw_button(screen)
     show_pack(screen, game)
     show_viruses(screen, game)
     show_number_of_player_cards(screen, game)
@@ -733,62 +734,124 @@ def show_game_over(screen, game):
     screen.blit(text, (100, 100))
 
 
-def buttons(screen, game):
-    x, y = BUTTONS_CORDS[0]
-    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
-    font = pygame.font.Font(None, 17)
-    text = font.render('Перейти в', True, TEXT_COLOR)
-    screen.blit(text, (x - 33, y - 12))
-    text = font.render('выбранный', True, TEXT_COLOR)
-    screen.blit(text, (x - 33, y - 2))
-    text = font.render('город', True, TEXT_COLOR)
-    screen.blit(text, (x - 27, y + 8))
+class Button:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
-    x, y = BUTTONS_CORDS[1]
-    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
-    font = pygame.font.Font(None, 17)
-    text = font.render('Построить', True, TEXT_COLOR)
-    screen.blit(text, (x - 33, y - 12))
-    font = pygame.font.Font(None, 17)
-    text = font.render('станцию', True, TEXT_COLOR)
-    screen.blit(text, (x - 27, y - 2))
+    def draw_button(self, screen):
+        draw.circle(screen, 'white', (self.x, self.y), BUTTON_RADIUS)
 
-    x, y = BUTTONS_CORDS[2]
-    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
-    font = pygame.font.Font(None, 17)
-    text = font.render('Бороться с', True, TEXT_COLOR)
-    screen.blit(text, (x - 33, y - 12))
-    font = pygame.font.Font(None, 17)
-    text = font.render('заражением', True, TEXT_COLOR)
-    screen.blit(text, (x - 33, y - 2))
+    def is_button_pressed(self, pos):
+        ex, ey = pos
+        return (self.x - ex) ** 2 + (self.y - ey) ** 2 <= BUTTON_RADIUS ** 2
 
-    x, y = BUTTONS_CORDS[3]
-    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
-    font = pygame.font.Font(None, 17)
-    text = font.render('Передать', True, TEXT_COLOR)
-    screen.blit(text, (x - 27, y - 12))
-    font = pygame.font.Font(None, 17)
-    text = font.render('карту', True, TEXT_COLOR)
-    screen.blit(text, (x - 25, y - 2))
 
-    if game.take_current_player().take_role() == ROLE_DISPATCHER:
-        x, y = (225 + game.take_current_player().take_num()*300, 600)
-        draw.circle(screen, 'white', (x, y), BUTTON_RADIUS + 1)
+class MoveButton(Button):
+    def draw_button(self, screen):
+        super().draw_button(screen)
+        font = pygame.font.Font(None, 17)
+        text = font.render('Перейти в', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 33, self.y - 12))
+        text = font.render('выбранный', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 33, self.y - 2))
+        text = font.render('город', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 27, self.y + 8))
+
+    def button_action(self, game, chosen_city, chosen_player):
+        if len(chosen_city) == 1:
+            if chosen_city[0].take_name() in game.take_current_player().take_hand() or \
+                    chosen_city[0] in \
+                    game.take_current_player().take_location().take_neighbors():
+                if game.action_with_city(game.take_current_player(),
+                                         chosen_city[0], chosen_city[0].take_name()):
+                    game.spending_action()
+                    return True
+
+
+class BuildButton(Button):
+    def draw_button(self, screen):
+        super().draw_button(screen)
+        font = pygame.font.Font(None, 17)
+        text = font.render('Построить', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 33, self.y - 12))
+        font = pygame.font.Font(None, 17)
+        text = font.render('станцию', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 27, self.y - 2))
+
+    def button_action(self, game, chosen_city, chosen_player):
+        if len(chosen_city) == 1:
+            if game.build_station(game.take_current_player(), chosen_city[0]):
+                game.spending_action()
+                return True
+
+
+class FightingButton(Button):
+    def draw_button(self, screen):
+        super().draw_button(screen)
+        font = pygame.font.Font(None, 17)
+        text = font.render('Бороться с', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 33, self.y - 12))
+        font = pygame.font.Font(None, 17)
+        text = font.render('заражением', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 33, self.y - 2))
+
+    def button_action(self, game, chosen_city, chosen_player):
+        if game.fighting_virus(game.take_current_player()):
+            game.spending_action()
+            return True
+
+
+class TransferButton(Button):
+    def draw_button(self, screen):
+        super().draw_button(screen)
+        font = pygame.font.Font(None, 17)
+        text = font.render('Передать', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 27, self.y - 12))
+        font = pygame.font.Font(None, 17)
+        text = font.render('карту', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 25, self.y - 2))
+
+    def button_action(self, game, chosen_city, chosen_player):
+        if chosen_player and len(chosen_city) == 1 and \
+                game.transfer_card(game.take_current_player(),
+                                   chosen_player, chosen_city[0].take_name()):
+            game.spending_action()
+            return True
+
+
+class DispatcherButton(Button):
+    def draw_button(self, screen):
+        super().draw_button(screen)
         font = pygame.font.Font(None, 15)
         text = font.render('Организовать', True, TEXT_COLOR)
-        screen.blit(text, (x - 35, y - 9))
+        screen.blit(text, (self.x - 35, self.y - 9))
         font = pygame.font.Font(None, 15)
         text = font.render('перелет', True, TEXT_COLOR)
-        screen.blit(text, (x - 28, y))
+        screen.blit(text, (self.x - 28, self.y))
 
-    x, y = BUTTONS_CORDS[5]
-    draw.circle(screen, 'white', (x, y), BUTTON_RADIUS)
-    font = pygame.font.Font(None, 17)
-    text = font.render('Создать', True, TEXT_COLOR)
-    screen.blit(text, (x - 27, y - 12))
-    font = pygame.font.Font(None, 17)
-    text = font.render('вакцину', True, TEXT_COLOR)
-    screen.blit(text, (x - 25, y - 2))
+    def button_action(self, game, chosen_city, chosen_player):
+        if chosen_player and len(chosen_city) == 1 and \
+                game.dispatcher_action(chosen_player,
+                                       chosen_city[0], chosen_city[0].take_name()):
+            game.spending_action()
+
+
+class VaccineButton(Button):
+    def draw_button(self, screen):
+        super().draw_button(screen)
+        font = pygame.font.Font(None, 17)
+        text = font.render('Создать', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 27, self.y - 12))
+        font = pygame.font.Font(None, 17)
+        text = font.render('вакцину', True, TEXT_COLOR)
+        screen.blit(text, (self.x - 25, self.y - 2))
+
+    def button_action(self, game, chosen_city, chosen_player):
+        if len(chosen_city) > 0:
+            if game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
+                                   [city.take_name() for city in chosen_city]):
+                game.spending_action()
 
 
 def main(screen, players):
@@ -797,6 +860,10 @@ def main(screen, players):
     screen.blit(image, (0, 0))
     pygame.display.flip()
     game = Game(players)
+    buttons = [MoveButton(50, 440), BuildButton(122, 440),
+               FightingButton(50, 512), TransferButton(122, 512), VaccineButton(780, 40)]
+    if ROLE_DISPATCHER in players:
+        buttons.append(DispatcherButton(225 + game.take_current_player().take_num() * 300, 600))
     running = True
     chosen_city = []
     chosen_player = None
@@ -812,72 +879,31 @@ def main(screen, players):
                         chosen_city.append(city)
                     else:
                         chosen_city.pop(chosen_city.index(city))
-                else:
+                for button in buttons:
+                    if button.is_button_pressed(event.pos) \
+                            and button.button_action(game, chosen_city, chosen_player):
+                        chosen_player_cords = (-100, -100)
+                        chosen_player = None
+                        chosen_city.clear()
+                        break
+                for i in range(4):
                     ex, ey = event.pos
-                    for i in range(6):
-                        x, y = BUTTONS_CORDS[i]
-                        if i == 4:
-                            x += game.take_current_player().take_num() * 300
-                        dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
-                        if dist <= BUTTON_RADIUS:
-                            if i == 1:
-                                if len(chosen_city) == 1:
-                                    if game.build_station(game.take_current_player(), chosen_city[0]):
-                                        game.spending_action()
-                                        break
-                            if i == 0:
-                                if len(chosen_city) == 1:
-                                    if chosen_city[0].take_name() in game.take_current_player().take_hand() or \
-                                            chosen_city[0] in \
-                                            game.take_current_player().take_location().take_neighbors():
-                                        if game.action_with_city(game.take_current_player(),
-                                                                 chosen_city[0], chosen_city[0].take_name()):
-                                            game.spending_action()
-                                            break
-                            if i == 2:
-                                if game.fighting_virus(game.take_current_player()):
-                                    game.spending_action()
-                                    break
-                            if i == 3:
-                                if chosen_player and len(chosen_city) == 1 and \
-                                        game.transfer_card(game.take_current_player(),
-                                                           chosen_player, chosen_city[0].take_name()):
-                                    game.spending_action()
-                                    chosen_player = None
-                                    chosen_player_cords = (-100, -100)
-                                    break
-                            if i == 4:
-                                if chosen_player and len(chosen_city) == 1 and \
-                                            game.dispatcher_action(chosen_player,
-                                                                   chosen_city[0], chosen_city[0].take_name()):
-                                    game.spending_action()
-                                    chosen_player = None
-                                    chosen_player_cords = (-100, -100)
-                                    break
-                            if i == 5:
-                                if len(chosen_city) > 0:
-                                    if game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
-                                                                [city.take_name() for city in chosen_city]):
-                                        game.spending_action()
-                    for i in range(4):
-                        x, y = 20 + i * 270, 600
-                        dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
-                        if dist <= 32.5:
-                            if chosen_player == game.take_players()[i]:
-                                chosen_player = None
-                                chosen_player_cords = (-100, -100)
-                            else:
-                                chosen_player = game.take_players()[i]
-                                chosen_player_cords = (x + 100, y)
+                    x, y = 20 + i * 270, 600
+                    dist = ((x - ex) ** 2 + (y - ey) ** 2) ** 0.5
+                    if dist <= 32.5:
+                        if chosen_player == game.take_players()[i]:
+                            chosen_player = None
+                            chosen_player_cords = (-100, -100)
+                        else:
+                            chosen_player = game.take_players()[i]
+                            chosen_player_cords = (x + 100, y)
         show_game_over(screen, game)
-        new_cadr(screen, image, game)
+        new_cadr(screen, image, game, buttons)
         for city in chosen_city:
-            # print(city.take_name())
             x, y = city.take_cords()
-            draw.polygon(screen, CHOOSE_COLOR, ((x+10, y), (x+20, y+10), (x+20, y-10)))
+            draw.polygon(screen, CHOOSE_COLOR, ((x + 10, y), (x + 20, y + 10), (x + 20, y - 10)))
         x, y = chosen_player_cords
-        draw.polygon(screen, CHOOSE_COLOR, ((x-70, y-10), (x-50, y-30), (x-90, y-30)))
-        # print(chosen_player)
+        draw.polygon(screen, CHOOSE_COLOR, ((x - 70, y - 10), (x - 50, y - 30), (x - 90, y - 30)))
         pygame.display.flip()
     pygame.quit()
 
@@ -888,31 +914,16 @@ def start_page(screen):
     background.fill(BACKGROUND_COLOR)
 
     manager = pygame_gui.UIManager((IMAGE_W, IMAGE_H + 100))
+    roles = []
+    for i in range(4):
+        role = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
+            options_list=ROLES,
+            starting_option=ROLES[-1],
+            relative_rect=pygame.Rect((150, 100+i*40), (250, 30)),
+            manager=manager
+        )
+        roles.append(role)
 
-    role_1 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
-        options_list=ROLES,
-        starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((150, 100), (250, 30)),
-        manager=manager
-    )
-    role_2 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
-        options_list=ROLES,
-        starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((150, 140), (250, 30)),
-        manager=manager
-    )
-    role_3 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
-        options_list=ROLES,
-        starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((150, 180), (250, 30)),
-        manager=manager
-    )
-    role_4 = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
-        options_list=ROLES,
-        starting_option=ROLES[-1],
-        relative_rect=pygame.Rect((150, 220), (250, 30)),
-        manager=manager
-    )
     confirm = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect((150, 300), (250, 40)),
         text='Начать игру',
@@ -929,14 +940,9 @@ def start_page(screen):
                 running = False
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-                    if event.ui_element == role_1:
-                        chosen_roles[0] = NUMBER_BY_ROLE[event.text]
-                    if event.ui_element == role_2:
-                        chosen_roles[1] = NUMBER_BY_ROLE[event.text]
-                    if event.ui_element == role_3:
-                        chosen_roles[2] = NUMBER_BY_ROLE[event.text]
-                    if event.ui_element == role_4:
-                        chosen_roles[3] = NUMBER_BY_ROLE[event.text]
+                    for i in range(len(roles)):
+                        if event.ui_element == roles[i]:
+                            chosen_roles[i] = NUMBER_BY_ROLE[event.text]
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == confirm:
                         tmp = []
@@ -959,4 +965,3 @@ if __name__ == '__main__':
     players = start_page(screen)
     if players:
         main(screen, players)
-
