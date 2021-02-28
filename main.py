@@ -759,14 +759,14 @@ class MoveButton(Button):
         screen.blit(text, (self.x - 27, self.y + 8))
 
     def button_action(self, game, chosen_city, chosen_player):
-        if len(chosen_city) == 1:
-            if chosen_city[0].take_name() in game.take_current_player().take_hand() or \
-                    chosen_city[0] in \
-                    game.take_current_player().take_location().take_neighbors():
-                if game.action_with_city(game.take_current_player(),
-                                         chosen_city[0], chosen_city[0].take_name()):
-                    game.spending_action()
-                    return True
+        if chosen_city:
+            if (chosen_city.take_name() in game.take_current_player().take_hand() or \
+                chosen_city in \
+                game.take_current_player().take_location().take_neighbors()) and \
+                    game.action_with_city(game.take_current_player(),
+                                          chosen_city, chosen_city.take_name()):
+                game.spending_action()
+                return True
 
 
 class BuildButton(Button):
@@ -780,8 +780,8 @@ class BuildButton(Button):
         screen.blit(text, (self.x - 27, self.y - 2))
 
     def button_action(self, game, chosen_city, chosen_player):
-        if len(chosen_city) == 1:
-            if game.build_station(game.take_current_player(), chosen_city[0]):
+        if chosen_city:
+            if game.build_station(game.take_current_player(), chosen_city):
                 game.spending_action()
                 return True
 
@@ -813,9 +813,9 @@ class TransferButton(Button):
         screen.blit(text, (self.x - 25, self.y - 2))
 
     def button_action(self, game, chosen_city, chosen_player):
-        if chosen_player and len(chosen_city) == 1 and \
+        if chosen_player and chosen_city and \
                 game.transfer_card(game.take_current_player(),
-                                   chosen_player, chosen_city[0].take_name()):
+                                   chosen_player, chosen_city.take_name()):
             game.spending_action()
             return True
 
@@ -835,6 +835,7 @@ class DispatcherButton(Button):
                 game.dispatcher_action(chosen_player,
                                        chosen_city[0], chosen_city[0].take_name()):
             game.spending_action()
+            return True
 
 
 class VaccineButton(Button):
@@ -852,6 +853,7 @@ class VaccineButton(Button):
             if game.create_vaccine(game.take_current_player(), chosen_city[0].take_virus(),
                                    [city.take_name() for city in chosen_city]):
                 game.spending_action()
+                return True
 
 
 def main(screen, players):
@@ -862,10 +864,8 @@ def main(screen, players):
     game = Game(players)
     buttons = [MoveButton(50, 440), BuildButton(122, 440),
                FightingButton(50, 512), TransferButton(122, 512), VaccineButton(780, 40)]
-    if ROLE_DISPATCHER in players:
-        buttons.append(DispatcherButton(225 + game.take_current_player().take_num() * 300, 600))
     running = True
-    chosen_city = []
+    chosen_city = None
     chosen_player = None
     chosen_player_cords = (-100, -100)
     while running:
@@ -875,16 +875,16 @@ def main(screen, players):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 city = game.get_element(event.pos)
                 if city:
-                    if city not in chosen_city:
-                        chosen_city.append(city)
+                    if chosen_city != city:
+                        chosen_city = city
                     else:
-                        chosen_city.pop(chosen_city.index(city))
+                        chosen_city = None
                 for button in buttons:
                     if button.is_button_pressed(event.pos) \
                             and button.button_action(game, chosen_city, chosen_player):
                         chosen_player_cords = (-100, -100)
                         chosen_player = None
-                        chosen_city.clear()
+                        chosen_city = None
                         break
                 for i in range(4):
                     ex, ey = event.pos
@@ -897,10 +897,15 @@ def main(screen, players):
                         else:
                             chosen_player = game.take_players()[i]
                             chosen_player_cords = (x + 100, y)
+        if game.take_current_player().take_role() == ROLE_DISPATCHER:
+            buttons.append(DispatcherButton(200 + game.take_current_player().take_num() * 300, 600))
+        else:
+            while len(buttons) > 5:
+                buttons.pop()
         show_game_over(screen, game)
         new_cadr(screen, image, game, buttons)
-        for city in chosen_city:
-            x, y = city.take_cords()
+        if chosen_city:
+            x, y = chosen_city.take_cords()
             draw.polygon(screen, CHOOSE_COLOR, ((x + 10, y), (x + 20, y + 10), (x + 20, y - 10)))
         x, y = chosen_player_cords
         draw.polygon(screen, CHOOSE_COLOR, ((x - 70, y - 10), (x - 50, y - 30), (x - 90, y - 30)))
@@ -919,7 +924,7 @@ def start_page(screen):
         role = pygame_gui.elements.ui_drop_down_menu.UIDropDownMenu(
             options_list=ROLES,
             starting_option=ROLES[-1],
-            relative_rect=pygame.Rect((150, 100+i*40), (250, 30)),
+            relative_rect=pygame.Rect((150, 100 + i * 40), (250, 30)),
             manager=manager
         )
         roles.append(role)
